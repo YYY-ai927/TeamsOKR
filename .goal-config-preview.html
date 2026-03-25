@@ -1,0 +1,17 @@
+<!doctype html>
+<html>
+  <body>
+    <script>
+      const raw = localStorage.getItem('okr-inprogress-demo:v1');
+      const next = raw ? JSON.parse(raw) : {};
+      next.activePage = 'goal-config';
+      next.goalConfig = Object.assign({}, next.goalConfig || {}, {
+        activeTab: 'library',
+        selectedGroupId: 'group-1-2',
+        treeCollapsed: false,
+      });
+      localStorage.setItem('okr-inprogress-demo:v1', JSON.stringify(next));
+      location.href = '/index.html';
+    </script>
+  </body>
+</html>
