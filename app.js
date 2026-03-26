@@ -1,9 +1,6 @@
 const STORAGE_KEY = "okr-inprogress-demo:v3-demo-default";
 const TOAST_DURATION = 2200;
-const CURRENT_APPROVER = {
-  id: "yanbo",
-  label: "焰柏",
-};
+const DEFAULT_CURRENT_USER_KEY = "yanbo";
 const START_GOAL_PERIOD_TYPE_OPTIONS = [
   { key: "monthly", label: "月度" },
 ];
@@ -48,6 +45,7 @@ const GOAL_CONFIG_TYPE_LABELS = {
 
 const GOAL_CONFIG_EXECUTOR_OPTIONS = [
   { id: "yanbo", label: "焰柏" },
+  { id: "yuanchuan", label: "远川" },
   { id: "liukan", label: "刘侃" },
   { id: "yuyaobo", label: "于耀博" },
   { id: "wubaowei", label: "吴宝为" },
@@ -95,6 +93,8 @@ const DEFAULT_GOAL_CONFIG_PROCESSES = [
 
 const GOAL_CONFIG_PROCESS_GUIDE_URL =
   "https://oa.dingtalk.com/dingtalk/web/query/dashboard?dinghash=aflowSetting#/aflowSetting?lang=zh_CN&nation=CN&code=ad8a9098eedc338da489f261416e9e99";
+const GOAL_INSTANCE_DETAIL_URL =
+  "https://applink.dingtalk.com/approval/detail?corpId=ding749b80b6d5dc606effe93478753d9884&instanceId=ZSKgmcLwSH6GWeItLB4WwA01691774353203&from=applink";
 const GOAL_CONFIG_PROCESS_GUIDE_SPRITE = "./assets/process-guide-sprite.png";
 
 const GOAL_CONFIG_PROCESS_GUIDE_STEPS = [
@@ -118,6 +118,9 @@ const GOAL_CONFIG_PROCESS_GUIDE_STEPS = [
   },
 ];
 
+const GOAL_MANAGEMENT_GUIDE_TEXT =
+  "若目标执行结束，可以按步骤发起评分： 选择考核周期 → 选择执行阶段 → 点击“推进评分”";
+
 const MEMBER_OPTIONS = [
   {
     key: "member:yanbo",
@@ -125,6 +128,13 @@ const MEMBER_OPTIONS = [
     type: "member",
     subtext: "主管理员",
     memberIds: ["yanbo"],
+  },
+  {
+    key: "member:yuanchuan",
+    label: "远川",
+    type: "member",
+    subtext: "普通员工",
+    memberIds: ["yuanchuan"],
   },
   {
     key: "member:yilin",
@@ -214,15 +224,9 @@ const GOAL_PAGE_LABELS = {
 const SIDEBAR_PRIMARY_MODULES = [
   { pageKey: "workbench", icon: "menu-workbench.svg", label: GOAL_PAGE_LABELS.workbench },
   { pageKey: "task-module", icon: "menu-task.svg", label: GOAL_PAGE_LABELS["task-module"] },
+  { pageKey: "plan-management", icon: "menu-plan.svg", label: GOAL_PAGE_LABELS["plan-module"] },
 ];
 const SIDEBAR_GROUPS = [
-  {
-    key: "plan",
-    pageKeys: ["plan-module", ...PLAN_PAGE_KEYS],
-    icon: "menu-plan.svg",
-    label: GOAL_PAGE_LABELS["plan-module"],
-    items: PLAN_PAGE_KEYS.map((pageKey) => ({ pageKey, label: GOAL_PAGE_LABELS[pageKey] })),
-  },
   {
     key: "goal",
     pageKeys: GOAL_PAGE_KEYS,
@@ -252,16 +256,146 @@ const SIDEBAR_GROUPS = [
     items: SETTINGS_PAGE_KEYS.map((pageKey) => ({ pageKey, label: GOAL_PAGE_LABELS[pageKey] })),
   },
 ];
+const PAGE_KEY_ALIASES = {
+  "plan-module": "plan-management",
+};
+const USER_PROFILES = [
+  {
+    key: "yanbo",
+    memberId: "yanbo",
+    label: "焰柏",
+    roleLabel: "主管理员",
+    avatar: "焰",
+    defaultPage: "my-goals",
+    allowedPageKeys: Array.from(new Set(APP_PAGE_KEYS.map((pageKey) => PAGE_KEY_ALIASES[pageKey] || pageKey))),
+  },
+  {
+    key: "yuanchuan",
+    memberId: "yuanchuan",
+    label: "远川",
+    roleLabel: "普通员工",
+    avatar: "远",
+    defaultPage: "my-goals",
+    allowedPageKeys: ["workbench", "task-module", "plan-management", "my-goals", "brief-fill", "brief-review"],
+  },
+];
+const USER_PROFILE_BY_KEY = Object.fromEntries(
+  USER_PROFILES.map((profile) => [
+    profile.key,
+    {
+      ...profile,
+      allowedPageKeySet: new Set(profile.allowedPageKeys.map((pageKey) => PAGE_KEY_ALIASES[pageKey] || pageKey)),
+    },
+  ])
+);
 const app = document.getElementById("app");
 let toastTimer = null;
 const goalConfigProcessGuideImageCache = [];
 
 const clone = (value) => JSON.parse(JSON.stringify(value));
-const normalizeGoalPage = (value) => (APP_PAGE_KEYS.includes(value) ? value : "my-goals");
+const normalizeBooleanMap = (value) =>
+  value && typeof value === "object" && !Array.isArray(value)
+    ? Object.fromEntries(Object.entries(value).map(([key, flag]) => [key, !!flag]))
+    : {};
+const normalizeCurrentUserKey = (value) => (USER_PROFILE_BY_KEY[value] ? value : DEFAULT_CURRENT_USER_KEY);
+const getUserProfileByKey = (key = DEFAULT_CURRENT_USER_KEY) => USER_PROFILE_BY_KEY[normalizeCurrentUserKey(key)];
+const getCurrentUserProfile = () => getUserProfileByKey(state?.currentUserKey);
+const getCurrentApprover = () => {
+  const currentUser = getCurrentUserProfile();
+  return {
+    id: currentUser.memberId,
+    label: currentUser.label,
+  };
+};
+const normalizeGoalPage = (value) => {
+  const normalized = APP_PAGE_KEYS.includes(value) ? value : "my-goals";
+  return PAGE_KEY_ALIASES[normalized] || normalized;
+};
 const isGoalModulePage = (pageKey) => GOAL_PAGE_KEYS.includes(normalizeGoalPage(pageKey));
 const getSidebarGroup = (groupKey) => SIDEBAR_GROUPS.find((group) => group.key === groupKey) || null;
 const getSidebarGroupKeyByPage = (pageKey) =>
   (SIDEBAR_GROUPS.find((group) => group.pageKeys.includes(normalizeGoalPage(pageKey))) || {}).key || null;
+function isPageAllowedForProfile(pageKey, profile = getCurrentUserProfile()) {
+  return profile.allowedPageKeySet.has(normalizeGoalPage(pageKey));
+}
+
+function getVisibleSidebarPrimaryModules(profile = getCurrentUserProfile()) {
+  return SIDEBAR_PRIMARY_MODULES.filter((item) => isPageAllowedForProfile(item.pageKey, profile));
+}
+
+function getVisibleSidebarGroups(profile = getCurrentUserProfile()) {
+  return SIDEBAR_GROUPS
+    .map((group) => {
+      const items = group.items.filter((item) => isPageAllowedForProfile(item.pageKey, profile));
+      return {
+        ...group,
+        items,
+        pageKeys: group.pageKeys.filter((pageKey) => isPageAllowedForProfile(pageKey, profile)),
+      };
+    })
+    .filter((group) => group.items.length > 0);
+}
+
+function getFirstAccessiblePageInGroup(groupKey, profile = getCurrentUserProfile()) {
+  const group = getSidebarGroup(groupKey);
+  if (!group) {
+    return null;
+  }
+  const firstItem = group.items.find((item) => isPageAllowedForProfile(item.pageKey, profile));
+  return firstItem ? firstItem.pageKey : null;
+}
+
+function getFallbackPageForProfile(profile = getCurrentUserProfile()) {
+  if (isPageAllowedForProfile(profile.defaultPage, profile)) {
+    return profile.defaultPage;
+  }
+  const firstPrimaryModule = getVisibleSidebarPrimaryModules(profile)[0];
+  return firstPrimaryModule ? firstPrimaryModule.pageKey : "my-goals";
+}
+
+function getAccessiblePage(pageKey, profile = getCurrentUserProfile()) {
+  const normalizedPage = normalizeGoalPage(pageKey);
+  if (isPageAllowedForProfile(normalizedPage, profile)) {
+    return normalizedPage;
+  }
+  const groupKey = getSidebarGroupKeyByPage(normalizedPage);
+  const groupFallbackPage = groupKey ? getFirstAccessiblePageInGroup(groupKey, profile) : null;
+  return groupFallbackPage || getFallbackPageForProfile(profile);
+}
+
+function syncActivePageAccess() {
+  const nextPage = getAccessiblePage(state.activePage);
+  if (nextPage === state.activePage) {
+    return;
+  }
+  state.activePage = nextPage;
+  resetGoalPageEntryTab(nextPage);
+  const groupKey = getSidebarGroupKeyByPage(nextPage);
+  if (groupKey) {
+    setSidebarGroupExpanded(groupKey, true);
+  }
+}
+
+function getPageParentLabel(pageKey) {
+  const normalizedPage = normalizeGoalPage(pageKey);
+  if (PLAN_PAGE_KEYS.includes(normalizedPage)) {
+    return GOAL_PAGE_LABELS["plan-module"];
+  }
+  if (GOAL_PAGE_KEYS.includes(normalizedPage)) {
+    return "目标模块";
+  }
+  if (BRIEF_PAGE_KEYS.includes(normalizedPage)) {
+    return GOAL_PAGE_LABELS["brief-module"];
+  }
+  if (STATS_PAGE_KEYS.includes(normalizedPage)) {
+    return GOAL_PAGE_LABELS["stats-module"];
+  }
+  if (SETTINGS_PAGE_KEYS.includes(normalizedPage)) {
+    return GOAL_PAGE_LABELS["settings-module"];
+  }
+  return "";
+}
+
 function isSidebarGroupExpanded(groupKey) {
   switch (groupKey) {
     case "plan":
@@ -280,15 +414,6 @@ function isSidebarGroupExpanded(groupKey) {
 }
 
 function setSidebarGroupExpanded(groupKey, nextValue) {
-  if (nextValue) {
-    state.planNavExpanded = groupKey === "plan";
-    state.goalNavExpanded = groupKey === "goal";
-    state.briefNavExpanded = groupKey === "brief";
-    state.statsNavExpanded = groupKey === "stats";
-    state.settingsNavExpanded = groupKey === "settings";
-    return;
-  }
-
   switch (groupKey) {
     case "plan":
       state.planNavExpanded = !!nextValue;
@@ -308,6 +433,49 @@ function setSidebarGroupExpanded(groupKey, nextValue) {
     default:
       break;
   }
+}
+
+function syncSidebarGroupExpandedInDom(groupKey, expanded) {
+  const groupRoot = document.querySelector(`.sidebar-group-${groupKey}`);
+  if (!groupRoot) {
+    return;
+  }
+
+  const submenu = groupRoot.querySelector(".submenu-list");
+  if (submenu) {
+    submenu.classList.toggle("is-open", expanded);
+  }
+
+  const arrow = groupRoot.querySelector(".menu-expand .ui-arrow");
+  if (arrow) {
+    arrow.classList.toggle("ui-arrow-down", expanded);
+    arrow.classList.toggle("ui-arrow-right", !expanded);
+  }
+}
+
+function animateSidebarGroupToggle(groupKey) {
+  const sidebar = document.querySelector(".sidebar");
+  const previousExpandedGroups = new Map(
+    SIDEBAR_GROUPS.map((group) => [group.key, isSidebarGroupExpanded(group.key)])
+  );
+
+  setSidebarGroupExpanded(groupKey, !isSidebarGroupExpanded(groupKey));
+
+  if (!sidebar) {
+    render();
+    return;
+  }
+
+  SIDEBAR_GROUPS.forEach((group) => {
+    const wasExpanded = previousExpandedGroups.get(group.key);
+    const isExpanded = isSidebarGroupExpanded(group.key);
+
+    if (wasExpanded !== isExpanded) {
+      syncSidebarGroupExpandedInDom(group.key, isExpanded);
+    }
+  });
+
+  persistState();
 }
 
 function getPendingGoalBadgeCount() {
@@ -362,6 +530,7 @@ function renderGoalConfigProcessGuidePreload() {
 
 function makeDefaultState() {
   return {
+    currentUserKey: DEFAULT_CURRENT_USER_KEY,
     activePage: "my-goals",
     planNavExpanded: false,
     goalNavExpanded: true,
@@ -379,7 +548,7 @@ function makeDefaultState() {
     goalConfigGoals: clone(DEFAULT_GOAL_CONFIG_GOALS),
     goalConfigProcesses: clone(DEFAULT_GOAL_CONFIG_PROCESSES),
     activeTab: "ongoing",
-    guideDismissed: false,
+    goalManagementGuideDismissedByUser: {},
     filters: {
       ongoing: {
         keyword: "",
@@ -424,6 +593,11 @@ function makeDefaultState() {
         executing: 1,
         completed: 1,
       },
+      selectionByTab: {
+        pending: [],
+        executing: [],
+        completed: [],
+      },
     },
     goalConfig: {
       activeTab: "library",
@@ -439,6 +613,7 @@ function makeDefaultState() {
       processPage: 1,
       processEditingId: null,
       processEditingName: "",
+      editingGroupName: "",
       editingGoalId: null,
       editingDraft: null,
       editingGroupId: null,
@@ -468,6 +643,7 @@ function loadState() {
     return normalizeState({
       ...base,
       ...saved,
+      currentUserKey: normalizeCurrentUserKey(saved.currentUserKey || base.currentUserKey),
       activePage: normalizeGoalPage(saved.activePage || base.activePage),
       planNavExpanded:
         typeof saved.planNavExpanded === "boolean"
@@ -550,6 +726,10 @@ function loadState() {
           ...base.myGoals.pageByTab,
           ...((saved.myGoals && saved.myGoals.pageByTab) || {}),
         },
+        selectionByTab: {
+          ...base.myGoals.selectionByTab,
+          ...((saved.myGoals && saved.myGoals.selectionByTab) || {}),
+        },
       },
       goalConfig: {
         ...base.goalConfig,
@@ -613,11 +793,20 @@ function sanitizeGoalConfigGroups(groups) {
 
 function normalizeState(nextState) {
   const current = nextState || makeDefaultState();
+  const currentUserKey = normalizeCurrentUserKey(current.currentUserKey);
+  const currentUserProfile = getUserProfileByKey(currentUserKey);
+  const activePage = getAccessiblePage(current.activePage, currentUserProfile);
   const ongoingGoalIds = new Set(current.goals.map((goal) => goal.id));
   const completedGoalIds = new Set(current.completedGoals.map((goal) => goal.id));
   const processIds = new Set((current.goalConfigProcesses || clone(DEFAULT_GOAL_CONFIG_PROCESSES)).map((item) => item.id));
   const normalizedGoalConfigGroups = sanitizeGoalConfigGroups(current.goalConfigGroups);
-  const normalizedPendingGoals = (current.pendingGoals || clone(DEFAULT_PENDING_GOALS)).map((goal) => {
+  const normalizedMyExecutingGoals = current.myExecutingGoals || clone(DEFAULT_MY_EXECUTING_GOALS);
+  const normalizedMyCompletedGoals = current.myCompletedGoals || clone(DEFAULT_MY_COMPLETED_GOALS);
+  const normalizedPendingGoals = (current.pendingGoals || clone(DEFAULT_PENDING_GOALS))
+    .filter(
+      (goal) => goal.id !== "pending-preview-confirm-flow" && goal.id !== "pending-preview-rating-flow"
+    )
+    .map((goal) => {
     if (goal.stage !== "executing") {
       return goal;
     }
@@ -634,25 +823,26 @@ function normalizeState(nextState) {
       })),
     };
   });
+  const pendingGoalIds = new Set(normalizedPendingGoals.map((goal) => goal.id));
+  const myExecutingGoalIds = new Set(normalizedMyExecutingGoals.map((goal) => goal.id));
+  const myCompletedGoalIds = new Set(normalizedMyCompletedGoals.map((goal) => goal.id));
   return {
     ...current,
+    currentUserKey,
     pendingGoals: normalizedPendingGoals,
-    myExecutingGoals: current.myExecutingGoals || clone(DEFAULT_MY_EXECUTING_GOALS),
-    myCompletedGoals: current.myCompletedGoals || clone(DEFAULT_MY_COMPLETED_GOALS),
+    myExecutingGoals: normalizedMyExecutingGoals,
+    myCompletedGoals: normalizedMyCompletedGoals,
     goalConfigGroups: normalizedGoalConfigGroups,
     goalConfigGoals: current.goalConfigGoals || clone(DEFAULT_GOAL_CONFIG_GOALS),
     goalConfigProcesses: current.goalConfigProcesses || clone(DEFAULT_GOAL_CONFIG_PROCESSES),
-    activePage: normalizeGoalPage(current.activePage),
-    planNavExpanded:
-      getSidebarGroupKeyByPage(current.activePage) === "plan" ? current.planNavExpanded !== false : false,
-    goalNavExpanded: isGoalModulePage(current.activePage) ? current.goalNavExpanded !== false : false,
-    briefNavExpanded:
-      getSidebarGroupKeyByPage(current.activePage) === "brief" ? current.briefNavExpanded !== false : false,
-    statsNavExpanded:
-      getSidebarGroupKeyByPage(current.activePage) === "stats" ? current.statsNavExpanded !== false : false,
-    settingsNavExpanded:
-      getSidebarGroupKeyByPage(current.activePage) === "settings" ? current.settingsNavExpanded !== false : false,
+    activePage,
+    planNavExpanded: !!current.planNavExpanded,
+    goalNavExpanded: !!current.goalNavExpanded,
+    briefNavExpanded: !!current.briefNavExpanded,
+    statsNavExpanded: !!current.statsNavExpanded,
+    settingsNavExpanded: !!current.settingsNavExpanded,
     sidebarCollapsed: !!current.sidebarCollapsed,
+    goalManagementGuideDismissedByUser: normalizeBooleanMap(current.goalManagementGuideDismissedByUser),
     selectionByTab: {
       ongoing: ((current.selectionByTab && current.selectionByTab.ongoing) || [])
         .filter((id) => ongoingGoalIds.has(id)),
@@ -732,6 +922,29 @@ function normalizeState(nextState) {
           Number(current.myGoals && current.myGoals.pageByTab && current.myGoals.pageByTab.completed) || 1
         ),
       },
+      selectionByTab: {
+        pending: (
+          (current.myGoals &&
+            current.myGoals.selectionByTab &&
+            Array.isArray(current.myGoals.selectionByTab.pending) &&
+            current.myGoals.selectionByTab.pending) ||
+          []
+        ).filter((id) => pendingGoalIds.has(id)),
+        executing: (
+          (current.myGoals &&
+            current.myGoals.selectionByTab &&
+            Array.isArray(current.myGoals.selectionByTab.executing) &&
+            current.myGoals.selectionByTab.executing) ||
+          []
+        ).filter((id) => myExecutingGoalIds.has(id)),
+        completed: (
+          (current.myGoals &&
+            current.myGoals.selectionByTab &&
+            Array.isArray(current.myGoals.selectionByTab.completed) &&
+            current.myGoals.selectionByTab.completed) ||
+          []
+        ).filter((id) => myCompletedGoalIds.has(id)),
+      },
     },
     goalConfig: {
       activeTab:
@@ -758,6 +971,7 @@ function normalizeState(nextState) {
       processPage: Math.max(1, Number(current.goalConfig && current.goalConfig.processPage) || 1),
       processEditingId: null,
       processEditingName: "",
+      editingGroupName: "",
       editingGoalId: null,
       editingDraft: null,
       editingGroupId: null,
@@ -777,6 +991,7 @@ function normalizeState(nextState) {
 
 function persistState() {
   const payload = {
+    currentUserKey: state.currentUserKey,
     activePage: state.activePage,
     planNavExpanded: state.planNavExpanded,
     goalNavExpanded: state.goalNavExpanded,
@@ -794,7 +1009,7 @@ function persistState() {
     goalConfigGoals: state.goalConfigGoals,
     goalConfigProcesses: state.goalConfigProcesses,
     activeTab: state.activeTab,
-    guideDismissed: state.guideDismissed,
+    goalManagementGuideDismissedByUser: state.goalManagementGuideDismissedByUser,
     filters: state.filters,
     selectionByTab: state.selectionByTab,
     pageByTab: state.pageByTab,
@@ -804,6 +1019,7 @@ function persistState() {
       editingGoalId: null,
       editingDraft: null,
       editingGroupId: null,
+      editingGroupName: "",
       processEditingId: null,
       processEditingName: "",
       groupMenuId: null,
@@ -886,7 +1102,7 @@ function createApprovalNo() {
 }
 
 function isCurrentUserExecutor(executorId) {
-  return executorId === CURRENT_APPROVER.id;
+  return executorId === getCurrentUserProfile().memberId;
 }
 
 function sortGoals(goals) {
@@ -1066,6 +1282,17 @@ function getAdvanceActionState(filteredGoals, tabKey = getTabKey()) {
   };
 }
 
+function isGoalManagementGuideDismissed(userKey = state.currentUserKey) {
+  return !!(state.goalManagementGuideDismissedByUser && state.goalManagementGuideDismissedByUser[userKey]);
+}
+
+function dismissGoalManagementGuide(userKey = state.currentUserKey) {
+  state.goalManagementGuideDismissedByUser = {
+    ...(state.goalManagementGuideDismissedByUser || {}),
+    [normalizeCurrentUserKey(userKey)]: true,
+  };
+}
+
 function canAdvanceSelection(tabKey = getTabKey()) {
   if (getTabKey(tabKey) !== "ongoing") {
     return false;
@@ -1104,6 +1331,14 @@ function getMyGoal(goalId, tabKey = getMyGoalTabKey()) {
   return getMyGoalList(tabKey).find((goal) => goal.id === goalId);
 }
 
+function getMyGoalSelection(tabKey = getMyGoalTabKey()) {
+  return state.myGoals.selectionByTab[getMyGoalTabKey(tabKey)] || [];
+}
+
+function setMyGoalSelection(nextSelection, tabKey = getMyGoalTabKey()) {
+  state.myGoals.selectionByTab[getMyGoalTabKey(tabKey)] = nextSelection;
+}
+
 function getMyGoalPage(tabKey = getMyGoalTabKey()) {
   return state.myGoals.pageByTab[getMyGoalTabKey(tabKey)] || 1;
 }
@@ -1131,6 +1366,27 @@ function getFilteredMyGoals(tabKey = getMyGoalTabKey()) {
   }
 
   return goals;
+}
+
+function getSelectedMyGoals(tabKey = getMyGoalTabKey()) {
+  return getMyGoalSelection(tabKey)
+    .map((id) => getMyGoal(id, tabKey))
+    .filter(Boolean);
+}
+
+function getMyGoalHeaderCheckboxState(pageGoals, tabKey = getMyGoalTabKey()) {
+  const selectedIds = getMyGoalSelection(tabKey);
+  if (!pageGoals.length) {
+    return "unchecked";
+  }
+  const selectedCount = pageGoals.filter((goal) => selectedIds.includes(goal.id)).length;
+  if (selectedCount === 0) {
+    return "unchecked";
+  }
+  if (selectedCount === pageGoals.length) {
+    return "checked";
+  }
+  return "partial";
 }
 
 function getMyGoalPagedGoals(goals, tabKey = getMyGoalTabKey()) {
@@ -1286,6 +1542,46 @@ function getFilteredGoalConfigGoals() {
   }
 
   return goals;
+}
+
+function getGoalConfigAlignReferenceTitles(draft = state.goalConfig.editingDraft) {
+  const titles = new Set();
+  const draftTitle = String(draft?.title || "").trim();
+  const persistedTitle = draft?.id ? String(getGoalConfigGoal(draft.id)?.title || "").trim() : "";
+
+  if (draftTitle) {
+    titles.add(draftTitle);
+  }
+  if (persistedTitle) {
+    titles.add(persistedTitle);
+  }
+
+  return titles;
+}
+
+function isGoalConfigMutualAlignBlocked(draft, candidateGoal) {
+  if (!draft || !candidateGoal) {
+    return false;
+  }
+
+  const candidateAlignedGoal = String(candidateGoal.alignedGoal || "").trim();
+  if (!candidateAlignedGoal) {
+    return false;
+  }
+
+  return getGoalConfigAlignReferenceTitles(draft).has(candidateAlignedGoal);
+}
+
+function getGoalConfigAlignOptions(draft = state.goalConfig.editingDraft) {
+  const currentGoalId = draft?.id || null;
+
+  return sortGoalConfigGoals(state.goalConfigGoals)
+    .filter((goal) => goal.groupId !== "recycle" && goal.id !== currentGoalId)
+    .filter((goal) => !isGoalConfigMutualAlignBlocked(draft, goal))
+    .map((goal) => ({
+      id: goal.id,
+      title: goal.title,
+    }));
 }
 
 function getGoalConfigTypeLabel(type) {
@@ -1547,33 +1843,90 @@ function normalizeProcessName(value) {
   return String(value || "").trim();
 }
 
+function normalizeGoalConfigGroupName(value) {
+  return String(value || "").trim();
+}
+
+function beginGoalConfigGroupEditing(groupId) {
+  const group = getGoalConfigGroup(groupId);
+  if (!group) {
+    return;
+  }
+  state.goalConfig.editingGroupId = groupId;
+  state.goalConfig.editingGroupName = group.label || "";
+  clearGoalConfigPanels();
+}
+
+function cancelGoalConfigGroupEditing() {
+  state.goalConfig.editingGroupId = null;
+  state.goalConfig.editingGroupName = "";
+}
+
 function saveGoalConfigProcessName(processId) {
   if (!state.goalConfig.processEditingId || state.goalConfig.processEditingId !== processId) {
-    return;
+    return true;
+  }
+  const process = state.goalConfigProcesses.find((item) => item.id === processId);
+  if (!process) {
+    cancelGoalConfigProcessEditing();
+    return true;
   }
   const nextName = normalizeProcessName(state.goalConfig.processEditingName);
   if (!nextName) {
     showToast("请输入流程名称");
-    return;
+    return false;
   }
-  state.goalConfigProcesses = state.goalConfigProcesses.map((item) =>
-    item.id === processId
-      ? {
-          ...item,
-          name: nextName,
-          updatedAt: formatDateOnly(),
-        }
-      : item
-  );
+  if (process.name !== nextName) {
+    state.goalConfigProcesses = state.goalConfigProcesses.map((item) =>
+      item.id === processId
+        ? {
+            ...item,
+            name: nextName,
+            updatedAt: formatDateOnly(),
+          }
+        : item
+    );
+    showToast("流程名称已更新");
+  }
   state.goalConfig.processEditingId = null;
   state.goalConfig.processEditingName = "";
   state.goalConfig.processMenuId = null;
-  showToast("流程名称已更新");
+  return true;
+}
+
+function saveGoalConfigGroupName(groupId) {
+  if (!state.goalConfig.editingGroupId || state.goalConfig.editingGroupId !== groupId) {
+    return true;
+  }
+  const group = getGoalConfigGroup(groupId);
+  if (!group) {
+    cancelGoalConfigGroupEditing();
+    return true;
+  }
+  const nextName = normalizeGoalConfigGroupName(state.goalConfig.editingGroupName);
+  if (!nextName) {
+    showToast("请输入分组名称");
+    return false;
+  }
+  if (group.label !== nextName) {
+    state.goalConfigGroups = state.goalConfigGroups.map((item) =>
+      item.id === groupId
+        ? {
+            ...item,
+            label: nextName,
+          }
+        : item
+    );
+    showToast("分组名称已更新");
+  }
+  cancelGoalConfigGroupEditing();
+  return true;
 }
 
 function cancelGoalConfigProcessEditing() {
   state.goalConfig.processEditingId = null;
   state.goalConfig.processEditingName = "";
+  state.goalConfig.processMenuId = null;
 }
 
 function getGoalConfigProcessGuideStep(step) {
@@ -1620,6 +1973,13 @@ function copyTextBestEffort(text) {
 
 function openGoalConfigProcessEditor() {
   const popup = window.open(GOAL_CONFIG_PROCESS_GUIDE_URL, "_blank", "noopener,noreferrer");
+  if (popup) {
+    popup.opener = null;
+  }
+}
+
+function openExternalPage(url) {
+  const popup = window.open(url, "_blank", "noopener,noreferrer");
   if (popup) {
     popup.opener = null;
   }
@@ -1746,8 +2106,8 @@ function createGoalInstanceKeyResults(goalTypeKey, krs = [], mode = "confirming"
     if (mode === "executing") {
       return {
         ...base,
-        value: "待填报",
-        score: goalTypeKey === "manual" ? "待人工评分" : "待推进评分",
+        value: "待填写",
+        score: "--",
       };
     }
 
@@ -1903,6 +2263,77 @@ function createMyCompletedGoalFromGoal(goal) {
   };
 }
 
+function normalizeGoalViewKrTitle(title, index = 0) {
+  const raw = String(title || "").trim();
+  if (!raw) {
+    return `KR ${index + 1}`;
+  }
+  return raw.replace(/^KR\s*\d+\s*[:：]\s*/i, "").trim() || `KR ${index + 1}`;
+}
+
+function extractGoalViewScore(value, fallback = "-") {
+  const text = String(value ?? "").trim();
+  if (!text || text === "-" || text === "--") {
+    return fallback;
+  }
+  const matched = text.match(/-?\d+(?:\.\d+)?/);
+  return matched ? matched[0] : text;
+}
+
+function buildGoalViewCardData(goal, tabKey = getTabKey()) {
+  const currentTab = getTabKey(tabKey);
+  const isCompleted = currentTab === "completed";
+  const goalTypeKey = goal.goalTypeKey || "auto";
+  const keyResults = Array.isArray(goal.keyResults) ? goal.keyResults : [];
+  const templateKrs =
+    Array.isArray(goal.templateKrs) && goal.templateKrs.length
+      ? goal.templateKrs
+      : keyResults.map((item, index) => ({
+          title: normalizeGoalViewKrTitle(item.title, index),
+          threshold: "-",
+          passing: "-",
+          challenge: "-",
+          weight: goalTypeKey === "manual" ? "-" : "0%",
+        }));
+  const totalScore = extractGoalViewScore(
+    goal.scoreValue ?? goal.scoreText ?? goal.totalScore ?? goal.score,
+    isCompleted ? "-" : "--"
+  );
+
+  return {
+    title: goal.title,
+    period: goal.period,
+    totalScore,
+    krs: templateKrs.map((kr, index) => {
+      const result = keyResults[index] || {};
+      const base = {
+        label: `KR ${index + 1}`,
+        title: kr.title || normalizeGoalViewKrTitle(result.title, index),
+        threshold: goalTypeKey === "auto" ? kr.threshold || "-" : "-",
+        passing: goalTypeKey === "auto" ? kr.passing || "-" : "-",
+        challenge: goalTypeKey === "auto" ? kr.challenge || "-" : "-",
+        weight: goalTypeKey === "manual" ? "-" : kr.weight || "0%",
+      };
+
+      if (isCompleted) {
+        return {
+          ...base,
+          result:
+            result.value ||
+            (goalTypeKey === "manual" ? "已完成" : kr.challenge || kr.passing || kr.threshold || "已完成"),
+          score: extractGoalViewScore(result.score, totalScore),
+        };
+      }
+
+      return {
+        ...base,
+        current: "待填写",
+        score: "--",
+      };
+    }),
+  };
+}
+
 function clearGoalConfigPanels() {
   state.goalConfig.groupMenuId = null;
   state.goalConfig.cardMenuId = null;
@@ -1911,6 +2342,7 @@ function clearGoalConfigPanels() {
 
 function resetMyGoalListState(tabKey = getMyGoalTabKey()) {
   setMyGoalPage(1, tabKey);
+  setMyGoalSelection([], tabKey);
   state.openDropdown = null;
   state.openRowMenu = null;
 }
@@ -1919,6 +2351,7 @@ function closeTransientPanels() {
   state.openDropdown = null;
   state.openRowMenu = null;
   clearGoalConfigPanels();
+  cancelGoalConfigGroupEditing();
   cancelGoalConfigProcessEditing();
 }
 
@@ -2192,18 +2625,20 @@ function renderSidebar() {
   const isSidebarCollapsed = !!state.sidebarCollapsed;
   const pendingGoalBadge = renderPendingGoalBadge();
   const collapsedPendingGoalBadge = renderPendingGoalBadge("is-collapsed");
+  const sidebarPrimaryModules = getVisibleSidebarPrimaryModules();
+  const sidebarGroups = getVisibleSidebarGroups();
 
   return `
     <aside class="sidebar ${isSidebarCollapsed ? "is-collapsed" : ""}">
       <div class="sidebar-inner">
         <div class="sidebar-menu">
-          ${SIDEBAR_PRIMARY_MODULES
+          ${sidebarPrimaryModules
             .map(
               (item) => renderModuleButton(item, state.activePage === item.pageKey)
             )
             .join("")}
 
-          ${SIDEBAR_GROUPS
+          ${sidebarGroups
             .map(
               (group) =>
                 renderSidebarGroup(
@@ -2228,6 +2663,7 @@ function renderSidebar() {
 }
 
 function renderTopbar() {
+  const currentUser = getCurrentUserProfile();
   return `
     <header class="topbar">
       <button class="brand" data-action="request-demo-reset" type="button" aria-label="重置演示缓存">
@@ -2237,12 +2673,49 @@ function renderTopbar() {
       <div class="topbar-right">
         <button class="icon-button" type="button"><img src="./assets/help.svg" alt="" /></button>
         <button class="icon-button" type="button"><img src="./assets/bell.svg" alt="" /></button>
-        <div class="user-chip">
-          <div class="avatar">支</div>
-          <div class="user-meta">
-            <div class="user-name">焰柏</div>
-            <div class="role-tag">主管理员</div>
-          </div>
+        <div class="topbar-user-switch">
+          <button
+            class="user-chip user-chip-button ${state.openDropdown === "user-switch" ? "is-open" : ""}"
+            data-action="toggle-dropdown"
+            data-value="user-switch"
+            type="button"
+            aria-haspopup="menu"
+            aria-expanded="${state.openDropdown === "user-switch" ? "true" : "false"}"
+            aria-label="切换当前查看角色"
+          >
+            <div class="avatar">${escapeHtml(currentUser.avatar)}</div>
+            <div class="user-meta">
+              <div class="user-name">${escapeHtml(currentUser.label)}</div>
+              <div class="role-tag">${escapeHtml(currentUser.roleLabel)}</div>
+            </div>
+            <span class="user-switch-arrow">${renderArrow("down", "ui-arrow-sm")}</span>
+          </button>
+          ${
+            state.openDropdown === "user-switch"
+              ? `
+                <div class="dropdown-panel user-switch-panel" role="menu" aria-label="角色切换">
+                  ${USER_PROFILES.map(
+                    (profile) => `
+                      <button
+                        class="dropdown-option user-switch-option ${profile.key === currentUser.key ? "is-active" : ""}"
+                        data-action="switch-user"
+                        data-value="${profile.key}"
+                        type="button"
+                        role="menuitemradio"
+                        aria-checked="${profile.key === currentUser.key ? "true" : "false"}"
+                      >
+                        <span class="avatar user-switch-option-avatar">${escapeHtml(profile.avatar)}</span>
+                        <span class="dropdown-meta">
+                          <span>${escapeHtml(profile.label)}</span>
+                          <span class="dropdown-subtext">${escapeHtml(profile.roleLabel)}</span>
+                        </span>
+                      </button>
+                    `
+                  ).join("")}
+                </div>
+              `
+              : ""
+          }
         </div>
       </div>
     </header>
@@ -2317,6 +2790,22 @@ function renderOngoingFilterRow(filteredGoals) {
   `;
 }
 
+function renderGoalManagementGuide() {
+  if (isGoalManagementGuideDismissed()) {
+    return "";
+  }
+
+  return `
+    <div class="guide-wrap">
+      <div class="guide" role="note" aria-label="推进评分操作指引">
+        <img src="./assets/info.svg" alt="" aria-hidden="true" />
+        <div class="guide-text">${escapeHtml(GOAL_MANAGEMENT_GUIDE_TEXT)}</div>
+        <button class="guide-close" data-action="dismiss-guide" type="button" aria-label="关闭推进评分操作指引">我知道了</button>
+      </div>
+    </div>
+  `;
+}
+
 function renderCompletedFilterRow() {
   const filters = getActiveFilters("completed");
   const dropdowns = renderDropdowns("completed");
@@ -2367,6 +2856,14 @@ function renderRowMenu(goal) {
       ${
         goal.stage === "executing"
           ? `<button class="dropdown-option" data-action="request-advance" data-value="${goal.id}" type="button">推进评分</button>`
+          : ""
+      }
+      ${
+        goal.stage === "rating"
+          ? `
+            <button class="dropdown-option" data-action="view-confirm-instance" data-value="${goal.id}" type="button">查看确认实例</button>
+            <button class="dropdown-option" data-action="view-rating-instance" data-value="${goal.id}" type="button">查看评分实例</button>
+          `
           : ""
       }
       <button class="dropdown-option danger" data-action="request-delete" data-value="${goal.id}" type="button">删除</button>
@@ -2634,12 +3131,18 @@ function renderPendingFilterRow() {
 function renderPendingTable(filteredGoals) {
   const tabKey = "pending";
   const { items: pageGoals, totalPages, page } = getMyGoalPagedGoals(filteredGoals, tabKey);
+  const headerState = getMyGoalHeaderCheckboxState(pageGoals, tabKey);
+  const selectedIds = getMyGoalSelection(tabKey);
+  const shouldShowBatchActions = selectedIds.length > 0;
 
   return `
     <div class="table-region">
       <div class="table-shell">
         <div class="table-header table-grid-pending">
-          <div class="cell">目标名称</div>
+          <div class="cell checkbox-wrap">
+            ${renderCheckbox(headerState, 'data-action="toggle-my-goal-select-all"')}
+          </div>
+          <div class="cell header-title">目标名称</div>
           <div class="cell">阶段类型</div>
           <div class="cell">执行人</div>
           <div class="cell">到达时间</div>
@@ -2652,9 +3155,14 @@ function renderPendingTable(filteredGoals) {
             pageGoals.length
               ? pageGoals
                   .map(
-                    (goal) => `
-                      <div class="table-row table-grid-pending">
-                        <div class="cell">
+                    (goal) => {
+                      const checked = selectedIds.includes(goal.id);
+                      return `
+                      <div class="table-row table-grid-pending ${checked ? "is-selected" : ""}">
+                        <div class="cell checkbox-wrap">
+                          ${renderCheckbox(checked ? "checked" : "unchecked", `data-action="toggle-my-goal-select-row" data-value="${goal.id}"`)}
+                        </div>
+                        <div class="cell cell-title">
                           <span class="truncate" title="${escapeHtml(goal.title)}">${escapeHtml(goal.title)}</span>
                         </div>
                         <div class="cell">${pendingStageTag(goal)}</div>
@@ -2671,7 +3179,8 @@ function renderPendingTable(filteredGoals) {
                           <button class="link-action" data-action="process-pending-goal" data-value="${goal.id}" type="button">处理</button>
                         </div>
                       </div>
-                    `
+                    `;
+                    }
                   )
                   .join("")
               : renderEmptyState(state.pendingGoals.length === 0 ? "暂无待处理的目标" : "未找到匹配的目标")
@@ -2680,7 +3189,10 @@ function renderPendingTable(filteredGoals) {
       </div>
 
       <div class="footer-row">
-        <div class="batch-actions"></div>
+        <div class="batch-actions">
+          ${shouldShowBatchActions ? '<button class="ghost-button" data-action="approve-my-goal-batch" type="button">批量通过</button>' : ""}
+          ${shouldShowBatchActions ? '<button class="danger-button" data-action="reject-my-goal-batch" type="button">批量拒绝</button>' : ""}
+        </div>
         ${renderMyGoalPagination(filteredGoals, totalPages, page, tabKey)}
       </div>
     </div>
@@ -2913,19 +3425,7 @@ function renderMyGoalsPlaceholder(tabKey) {
 
 function renderDevelopingPage(pageKey) {
   const label = GOAL_PAGE_LABELS[pageKey] || "当前页面";
-  const groupKey = getSidebarGroupKeyByPage(pageKey);
-  const parentLabel =
-    groupKey === "goal"
-      ? "目标模块"
-      : groupKey === "plan"
-        ? GOAL_PAGE_LABELS["plan-module"]
-        : groupKey === "brief"
-          ? GOAL_PAGE_LABELS["brief-module"]
-          : groupKey === "stats"
-            ? GOAL_PAGE_LABELS["stats-module"]
-            : groupKey === "settings"
-              ? GOAL_PAGE_LABELS["settings-module"]
-              : "";
+  const parentLabel = getPageParentLabel(pageKey);
   return `
     <main class="page">
       <div class="page-inner">
@@ -3025,6 +3525,14 @@ function renderGoalConfigToolbarSearchIcon() {
     "0 0 12.1647 12.1647",
     '<g><path d="M9.91724 5.54224C9.91724 3.1261 7.95834 1.16739 5.54224 1.16724C3.126 1.16724 1.16724 3.126 1.16724 5.54224C1.16739 7.95834 3.1261 9.91724 5.54224 9.91724C7.95824 9.91708 9.91708 7.95824 9.91724 5.54224ZM11.0836 5.54224C11.0835 8.60258 8.60258 11.0835 5.54224 11.0836C2.48177 11.0836 0.000153997 8.60267 0 5.54224C0 2.48167 2.48167 0 5.54224 0C8.60267 0.000154 11.0836 2.48177 11.0836 5.54224Z" fill="currentColor"/><path d="M8.69389 8.69389C8.92169 8.46608 9.29152 8.46608 9.51933 8.69389L11.9939 11.1694C12.2216 11.3972 12.2217 11.7662 11.9939 11.9939C11.7662 12.2217 11.3972 12.2216 11.1694 11.9939L8.69389 9.51933C8.46608 9.29152 8.46608 8.92169 8.69389 8.69389Z" fill="currentColor"/></g>'
   );
+}
+
+function renderGoalConfigCreateArrowIcon() {
+  return `
+    <span class="goal-config-create-arrow-wrap" aria-hidden="true">
+      <img class="goal-config-create-arrow-icon" src="./assets/goal-config-create-arrow.svg" alt="" />
+    </span>
+  `;
 }
 
 function renderGoalConfigSelectArrow(className = "") {
@@ -3205,7 +3713,9 @@ function renderGoalConfigTreeRow(group) {
         ${
           isEditing
             ? `<div class="goal-config-tree-main is-editing">
-                <input class="goal-config-tree-input" data-field="goal-config-group-name" data-group-id="${group.id}" value="${escapeHtml(group.label)}" />
+                <input class="goal-config-tree-input" data-field="goal-config-group-name" data-group-id="${group.id}" value="${escapeHtml(
+                  state.goalConfig.editingGroupName
+                )}" />
               </div>`
             : `<button class="goal-config-tree-main" data-action="goal-config-select-group" data-value="${group.id}" type="button">
                 <span class="goal-config-tree-label">${escapeHtml(group.label || "未命名分组")}</span>
@@ -3320,7 +3830,7 @@ function renderGoalConfigToolbar() {
               type="button"
               aria-label="展开创建目标菜单"
             >
-              ${renderGoalConfigSelectArrow("is-brand")}
+              ${renderGoalConfigCreateArrowIcon()}
             </button>
           </div>
           ${
@@ -3491,6 +4001,8 @@ function renderGoalConfigEditingCard() {
   }
 
   const selectedAlign = draft.alignedGoal || "未设置对齐目标";
+  const alignOptions = getGoalConfigAlignOptions(draft);
+  const activeAlignOption = alignOptions.find((option) => option.title === draft.alignedGoal) || null;
 
   return `
     <article class="goal-config-card is-editing" data-goal-config-card data-goal-type="${draft.type}">
@@ -3503,9 +4015,36 @@ function renderGoalConfigEditingCard() {
 
       <div class="goal-config-edit-row goal-config-edit-row-align">
         ${renderGoalConfigFormLabel("对齐")}
-        <div class="goal-config-align-display">
-          ${renderGoalConfigInlineIcon("align")}
-          <span>${escapeHtml(selectedAlign)}</span>
+        <div class="control goal-config-inline-control">
+          <button class="control-button goal-config-select-button goal-config-select-wide" data-action="toggle-goal-config-dropdown" data-value="goal-config-align" type="button">
+            <span class="goal-config-align-display">
+              ${renderGoalConfigInlineIcon("align")}
+              <span>${escapeHtml(selectedAlign)}</span>
+            </span>
+            ${renderGoalConfigSelectArrow()}
+          </button>
+          ${
+            state.openDropdown === "goal-config-align"
+              ? `
+                <div class="dropdown-panel goal-config-inline-menu">
+                  <button class="dropdown-option ${!draft.alignedGoal ? "is-active" : ""}" data-action="set-goal-config-draft-align" data-value="" type="button">未设置对齐目标</button>
+                  ${
+                    alignOptions.length
+                      ? alignOptions
+                          .map(
+                            (option) => `
+                              <button class="dropdown-option ${activeAlignOption?.id === option.id ? "is-active" : ""}" data-action="set-goal-config-draft-align" data-value="${option.id}" type="button">
+                                ${escapeHtml(option.title)}
+                              </button>
+                            `
+                          )
+                          .join("")
+                      : '<div class="member-heading">暂无可选择的对齐目标</div>'
+                  }
+                </div>
+              `
+              : ""
+          }
         </div>
         ${renderGoalConfigMetricHead(draft.type)}
       </div>
@@ -4096,6 +4635,8 @@ function renderGoalManagementPage() {
           </div>
         </div>
 
+        ${renderGoalManagementGuide()}
+
         <section class="content-card">
           <div class="tab-row">
             <div class="tabs">
@@ -4160,54 +4701,14 @@ function renderActivePage() {
   return renderMyGoalsPage();
 }
 
-function renderGoalModal(goal) {
+function renderGoalModal(goal, tabKey = getTabKey()) {
+  const currentTab = getTabKey(tabKey);
+  const cardData = buildGoalViewCardData(goal, currentTab);
+  const cardMarkup = currentTab === "completed" ? renderCompletedCard(cardData) : renderExecutingCard(cardData);
   return `
     <div class="backdrop" data-action="close-overlay"></div>
-    <div class="modal" data-overlay-panel="true">
-      <div class="panel-header">
-        <div>
-          <h2 class="panel-title">${escapeHtml(goal.title)}</h2>
-          <p class="panel-subtitle">${goal.goalType ? "已完成目标详情，当前仅支持查看。" : "执行阶段目标详情，当前仅支持查看。"}</p>
-        </div>
-        <button class="close-button" data-action="close-overlay" type="button">×</button>
-      </div>
-      <div class="panel-content">
-        <div class="goal-card">
-          <div class="goal-meta-grid">
-            <div class="meta-item">
-              <div class="meta-label">周期</div>
-              <div class="meta-value">${escapeHtml(goal.period)}</div>
-            </div>
-            <div class="meta-item">
-              <div class="meta-label">执行人</div>
-              <div class="meta-value">${escapeHtml(goal.executor)}</div>
-            </div>
-            <div class="meta-item">
-              <div class="meta-label">当前值</div>
-              <div class="meta-value">${escapeHtml(goal.currentValue)}</div>
-            </div>
-            <div class="meta-item">
-              <div class="meta-label">${goal.goalType ? "得分" : "参考得分"}</div>
-              <div class="meta-value">${escapeHtml(goal.scoreText || String(goal.score ?? "-"))}</div>
-            </div>
-          </div>
-          <div>
-            <h3 class="section-title">KR 明细</h3>
-            <div class="kr-list">
-              ${goal.keyResults
-                .map(
-                  (item) => `
-                    <div class="kr-item">
-                      <h4>${escapeHtml(item.title)}</h4>
-                      <p>当前值：${escapeHtml(item.value)}，${escapeHtml(item.score)}</p>
-                    </div>
-                  `
-                )
-                .join("")}
-            </div>
-          </div>
-        </div>
-      </div>
+    <div class="goal-view-dialog" data-overlay-panel="true">
+      ${cardMarkup}
     </div>
   `;
 }
@@ -4338,7 +4839,7 @@ function renderConfirmModal(overlay) {
       <div class="confirm-copy">${escapeHtml(overlay.description)}</div>
       <div class="panel-footer">
         <button class="modal-button" data-action="close-overlay" type="button">取消</button>
-        <button class="modal-button-primary" data-action="confirm-overlay" type="button">确认</button>
+        <button class="${escapeHtml(overlay.confirmButtonClassName || "modal-button-primary")}" data-action="confirm-overlay" type="button">${escapeHtml(overlay.confirmLabel || "确认")}</button>
       </div>
     </div>
   `;
@@ -4349,6 +4850,16 @@ function renderStartGoalRemoveIcon() {
     <svg class="start-goal-remove-icon" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
       <path d="M4.66675 4.66663L11.3334 11.3333" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
       <path d="M11.3334 4.66663L4.66675 11.3333" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+    </svg>
+  `;
+}
+
+function renderStartGoalChevronIcon(size = "md") {
+  const iconSize = size === "sm" ? 14 : 16;
+  const className = size === "sm" ? "start-goal-chevron-icon is-sm" : "start-goal-chevron-icon";
+  return `
+    <svg class="${className}" viewBox="0 0 ${iconSize} ${iconSize}" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+      <path d="M4.5 6L8 9.5L11.5 6" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
     </svg>
   `;
 }
@@ -4370,12 +4881,12 @@ function renderStartGoalModalInner(overlay) {
         <div class="start-goal-period-selects">
           <div class="start-goal-period-type">
             <span>${START_GOAL_PERIOD_TYPE_OPTIONS[0].label}</span>
-            ${renderArrow("down", "ui-arrow-sm")}
+            ${renderStartGoalChevronIcon("sm")}
           </div>
           <div class="control start-goal-period-control">
             <button class="start-goal-period-button" data-action="toggle-dropdown" data-value="start-goal-period" type="button">
               <span>${escapeHtml(nextOverlay.period)}</span>
-              ${renderArrow("down", "ui-arrow-sm")}
+              ${renderStartGoalChevronIcon()}
             </button>
             ${
               state.openDropdown === "start-goal-period"
@@ -4400,7 +4911,7 @@ function renderStartGoalModalInner(overlay) {
             <div class="control start-goal-group-control">
               <button class="start-goal-group-button" data-action="toggle-dropdown" data-value="start-goal-group" type="button">
                 <span class="truncate">${escapeHtml(groupLabel)}</span>
-                ${renderArrow("down", "ui-arrow-sm")}
+                ${renderStartGoalChevronIcon()}
               </button>
               ${
                 state.openDropdown === "start-goal-group"
@@ -4465,8 +4976,10 @@ function renderStartGoalModalInner(overlay) {
       </div>
       <div class="panel-footer start-goal-footer">
         <div class="start-goal-footer-period">${escapeHtml(formatLaunchPeriod(nextOverlay.period))}</div>
-        <button class="modal-button" data-action="close-overlay" type="button">取消</button>
-        <button class="modal-button-primary" data-action="confirm-start-goal" type="button" ${selectedGoals.length === 0 ? "disabled" : ""}>发起</button>
+        <div class="start-goal-footer-actions">
+          <button class="modal-button" data-action="close-overlay" type="button">取消</button>
+          <button class="modal-button-primary" data-action="confirm-start-goal" type="button" ${selectedGoals.length === 0 ? "disabled" : ""}>发起</button>
+        </div>
       </div>
   `;
 }
@@ -4556,7 +5069,7 @@ function renderOverlay() {
 
   if (state.overlay.type === "goal-modal") {
     const goal = getGoal(state.overlay.goalId, state.overlay.tabKey);
-    return goal ? `<div class="overlay-root">${renderGoalModal(goal)}</div>` : "";
+    return goal ? `<div class="overlay-root">${renderGoalModal(goal, state.overlay.tabKey)}</div>` : "";
   }
 
   if (state.overlay.type === "drawer") {
@@ -4624,6 +5137,23 @@ function buildConfirmOverlay(kind, goalIds, tabKey = getTabKey()) {
   };
 }
 
+function buildMyGoalPendingConfirmOverlay(kind, goalIds) {
+  const isReject = kind === "reject";
+  return {
+    type: "confirm",
+    scope: "my-goal-pending",
+    kind,
+    goalIds,
+    title: isReject ? "确认批量拒绝" : "确认批量通过",
+    summary: `本次将${isReject ? "拒绝" : "通过"} ${goalIds.length} 个待处理目标。`,
+    description: isReject
+      ? "确认后会同步更新本地 mock 数据：确认中的目标将退回发起方，评分中的目标将退回执行中。"
+      : "确认后会同步更新本地 mock 数据：确认中的目标将进入执行中，评分中的目标将进入已完成。",
+    confirmLabel: isReject ? "确认拒绝" : "确认通过",
+    confirmButtonClassName: isReject ? "danger-button" : "modal-button-primary",
+  };
+}
+
 function buildGoalConfigConfirmOverlay(scope, payload) {
   if (scope === "goal") {
     return {
@@ -4684,6 +5214,11 @@ function removeGoalInstanceEverywhere(goalIds) {
   state.pendingGoals = state.pendingGoals.filter((goal) => !targets.has(goal.id));
   state.myExecutingGoals = state.myExecutingGoals.filter((goal) => !targets.has(goal.id));
   state.myCompletedGoals = state.myCompletedGoals.filter((goal) => !targets.has(goal.id));
+  state.selectionByTab.ongoing = (state.selectionByTab.ongoing || []).filter((id) => !targets.has(id));
+  state.selectionByTab.completed = (state.selectionByTab.completed || []).filter((id) => !targets.has(id));
+  state.myGoals.selectionByTab.pending = (state.myGoals.selectionByTab.pending || []).filter((id) => !targets.has(id));
+  state.myGoals.selectionByTab.executing = (state.myGoals.selectionByTab.executing || []).filter((id) => !targets.has(id));
+  state.myGoals.selectionByTab.completed = (state.myGoals.selectionByTab.completed || []).filter((id) => !targets.has(id));
 }
 
 function applyDelete(goalIds, tabKey = getTabKey()) {
@@ -4694,47 +5229,135 @@ function applyDelete(goalIds, tabKey = getTabKey()) {
   showToast("目标已删除");
 }
 
+function applyPendingApproval(goalIds, toastMessage) {
+  const ids = Array.from(new Set(Array.isArray(goalIds) ? goalIds : [goalIds])).filter(Boolean);
+  if (!ids.length) {
+    return 0;
+  }
+
+  const targets = new Set(ids);
+  const pendingGoals = state.pendingGoals.filter((goal) => targets.has(goal.id));
+  if (!pendingGoals.length) {
+    return 0;
+  }
+
+  const pendingGoalById = new Map(pendingGoals.map((goal) => [goal.id, goal]));
+  const confirmingIds = new Set(pendingGoals.filter((goal) => goal.stage === "confirming").map((goal) => goal.id));
+  const ratingIds = new Set(pendingGoals.filter((goal) => goal.stage === "rating").map((goal) => goal.id));
+  const nextExecutingGoals = [];
+
+  if (confirmingIds.size) {
+    state.goals = state.goals.map((goal) => {
+      if (!confirmingIds.has(goal.id)) {
+        return goal;
+      }
+      const nextGoal = convertGoalToExecuting(goal);
+      nextExecutingGoals.push(nextGoal);
+      return nextGoal;
+    });
+
+    const nextMyExecutingGoals = nextExecutingGoals
+      .filter((goal) => isCurrentUserExecutor(goal.executorId))
+      .map((goal) => createMyExecutingGoalFromGoal(goal));
+    if (nextMyExecutingGoals.length) {
+      state.myExecutingGoals = [
+        ...nextMyExecutingGoals,
+        ...state.myExecutingGoals.filter((goal) => !confirmingIds.has(goal.id)),
+      ];
+    }
+  }
+
+  if (ratingIds.size) {
+    const ratingSourceGoals = ids
+      .filter((id) => ratingIds.has(id))
+      .map((id) => state.goals.find((goal) => goal.id === id) || pendingGoalById.get(id))
+      .filter(Boolean);
+
+    removeGoalInstanceEverywhere([...ratingIds]);
+    state.completedGoals = [...ratingSourceGoals.map((goal) => createCompletedGoalFromGoal(goal)), ...state.completedGoals];
+
+    const nextMyCompletedGoals = ratingSourceGoals
+      .filter((goal) => isCurrentUserExecutor(goal.executorId))
+      .map((goal) => createMyCompletedGoalFromGoal(goal));
+    if (nextMyCompletedGoals.length) {
+      state.myCompletedGoals = [
+        ...nextMyCompletedGoals,
+        ...state.myCompletedGoals.filter((goal) => !ratingIds.has(goal.id)),
+      ];
+    }
+  }
+
+  state.pendingGoals = state.pendingGoals.filter((goal) => !targets.has(goal.id));
+  state.myGoals.selectionByTab.pending = (state.myGoals.selectionByTab.pending || []).filter((id) => !targets.has(id));
+  state.overlay = null;
+  state.openDropdown = null;
+  state.openRowMenu = null;
+  showToast(toastMessage || `已批量通过 ${pendingGoals.length} 个待处理目标`);
+  return pendingGoals.length;
+}
+
+function applyPendingRejection(goalIds, toastMessage) {
+  const ids = Array.from(new Set(Array.isArray(goalIds) ? goalIds : [goalIds])).filter(Boolean);
+  if (!ids.length) {
+    return 0;
+  }
+
+  const targets = new Set(ids);
+  const pendingGoals = state.pendingGoals.filter((goal) => targets.has(goal.id));
+  if (!pendingGoals.length) {
+    return 0;
+  }
+
+  const confirmingIds = new Set(pendingGoals.filter((goal) => goal.stage === "confirming").map((goal) => goal.id));
+  const ratingIds = new Set(pendingGoals.filter((goal) => goal.stage === "rating").map((goal) => goal.id));
+  const revertedGoals = [];
+
+  if (confirmingIds.size) {
+    removeGoalInstanceEverywhere([...confirmingIds]);
+  }
+
+  if (ratingIds.size) {
+    state.goals = state.goals.map((goal) => {
+      if (!ratingIds.has(goal.id)) {
+        return goal;
+      }
+      const nextGoal = convertGoalToExecuting(goal);
+      revertedGoals.push(nextGoal);
+      return nextGoal;
+    });
+    state.completedGoals = state.completedGoals.filter((goal) => !ratingIds.has(goal.id));
+    state.myCompletedGoals = state.myCompletedGoals.filter((goal) => !ratingIds.has(goal.id));
+
+    const nextMyExecutingGoals = revertedGoals
+      .filter((goal) => isCurrentUserExecutor(goal.executorId))
+      .map((goal) => createMyExecutingGoalFromGoal(goal));
+    if (nextMyExecutingGoals.length) {
+      state.myExecutingGoals = [
+        ...nextMyExecutingGoals,
+        ...state.myExecutingGoals.filter((goal) => !ratingIds.has(goal.id)),
+      ];
+    }
+  }
+
+  state.pendingGoals = state.pendingGoals.filter((goal) => !targets.has(goal.id));
+  state.myGoals.selectionByTab.pending = (state.myGoals.selectionByTab.pending || []).filter((id) => !targets.has(id));
+  state.overlay = null;
+  state.openDropdown = null;
+  state.openRowMenu = null;
+  showToast(toastMessage || `已批量拒绝 ${pendingGoals.length} 个待处理目标`);
+  return pendingGoals.length;
+}
+
 function completePendingProcess(goalId) {
   const pendingGoal = state.pendingGoals.find((goal) => goal.id === goalId);
   if (!pendingGoal) {
     return;
   }
 
-  state.pendingGoals = state.pendingGoals.filter((goal) => goal.id !== goalId);
-
-  if (pendingGoal.stage === "confirming") {
-    const ongoingGoal = state.goals.find((goal) => goal.id === goalId);
-    if (ongoingGoal) {
-      const nextGoal = convertGoalToExecuting(ongoingGoal);
-      state.goals = state.goals.map((goal) => (goal.id === goalId ? nextGoal : goal));
-
-      if (isCurrentUserExecutor(nextGoal.executorId)) {
-        state.myExecutingGoals = [
-          createMyExecutingGoalFromGoal(nextGoal),
-          ...state.myExecutingGoals.filter((goal) => goal.id !== goalId),
-        ];
-      }
-    }
-
-    state.overlay = null;
-    state.openDropdown = null;
-    state.openRowMenu = null;
-    showToast("确认审批已完成，目标进入执行中");
-    return;
-  }
-
-  const sourceGoal = state.goals.find((goal) => goal.id === goalId) || pendingGoal;
-  removeGoalInstanceEverywhere(goalId);
-  state.completedGoals = [createCompletedGoalFromGoal(sourceGoal), ...state.completedGoals];
-
-  if (isCurrentUserExecutor(sourceGoal.executorId)) {
-    state.myCompletedGoals = [createMyCompletedGoalFromGoal(sourceGoal), ...state.myCompletedGoals];
-  }
-
-  state.overlay = null;
-  state.openDropdown = null;
-  state.openRowMenu = null;
-  showToast("评分审批已完成，目标进入已完成");
+  applyPendingApproval(
+    [goalId],
+    pendingGoal.stage === "confirming" ? "确认审批已完成，目标进入执行中" : "评分审批已完成，目标进入已完成"
+  );
 }
 
 function confirmOverlayAction() {
@@ -4781,7 +5404,7 @@ function confirmOverlayAction() {
     if (groupSet.has(state.goalConfig.selectedGroupId)) {
       state.goalConfig.selectedGroupId = "recycle";
     }
-    state.goalConfig.editingGroupId = null;
+    cancelGoalConfigGroupEditing();
     state.overlay = null;
     clearGoalConfigPanels();
     showToast("分组已删除，目标已移入周转箱");
@@ -4804,6 +5427,14 @@ function confirmOverlayAction() {
   if (state.overlay.scope === "demo-reset-step-2") {
     clearDemoStorageAndReload();
     return true;
+  }
+  if (state.overlay.scope === "my-goal-pending") {
+    if (state.overlay.kind === "reject") {
+      applyPendingRejection(state.overlay.goalIds);
+      return false;
+    }
+    applyPendingApproval(state.overlay.goalIds);
+    return false;
   }
   if (state.overlay.kind === "advance") {
     applyAdvance(state.overlay.goalIds, state.overlay.tabKey);
@@ -4930,8 +5561,7 @@ function createGoalConfigGroup(parentId = null) {
     state.goalConfig.expandedGroupIds = [...state.goalConfig.expandedGroupIds, parentId];
   }
   state.goalConfig.selectedGroupId = nextId;
-  state.goalConfig.editingGroupId = nextId;
-  clearGoalConfigPanels();
+  beginGoalConfigGroupEditing(nextId);
 }
 
 function saveGoalConfigDraft() {
@@ -5003,6 +5633,16 @@ function saveGoalConfigDraft() {
     })),
   };
 
+  if (nextGoal.alignedGoal) {
+    const alignedTargetGoal = state.goalConfigGoals.find(
+      (goal) => goal.id !== nextGoal.id && goal.title === nextGoal.alignedGoal
+    );
+    if (isGoalConfigMutualAlignBlocked(nextGoal, alignedTargetGoal)) {
+      showToast("所选目标已对齐当前目标，不能互相对齐");
+      return;
+    }
+  }
+
   if (draft.isNew) {
     state.goalConfigGoals = [nextGoal, ...state.goalConfigGoals];
     showToast("目标已创建");
@@ -5063,10 +5703,17 @@ function shouldDeferInputRender(event) {
 }
 
 function render(preserveFocus) {
+  syncActivePageAccess();
   const ongoingIds = new Set(state.goals.map((goal) => goal.id));
   const completedIds = new Set(state.completedGoals.map((goal) => goal.id));
+  const pendingIds = new Set(state.pendingGoals.map((goal) => goal.id));
+  const myExecutingIds = new Set(state.myExecutingGoals.map((goal) => goal.id));
+  const myCompletedIds = new Set(state.myCompletedGoals.map((goal) => goal.id));
   state.selectionByTab.ongoing = getActiveSelection("ongoing").filter((id) => ongoingIds.has(id));
   state.selectionByTab.completed = getActiveSelection("completed").filter((id) => completedIds.has(id));
+  state.myGoals.selectionByTab.pending = getMyGoalSelection("pending").filter((id) => pendingIds.has(id));
+  state.myGoals.selectionByTab.executing = getMyGoalSelection("executing").filter((id) => myExecutingIds.has(id));
+  state.myGoals.selectionByTab.completed = getMyGoalSelection("completed").filter((id) => myCompletedIds.has(id));
 
   app.innerHTML = `
     <div class="app-shell">
@@ -5139,16 +5786,18 @@ function onAction(action, value, target) {
   const selectedIds = getActiveSelection(tabKey);
   const myGoalTab = getMyGoalTabKey();
   const filteredMyGoals = getFilteredMyGoals(myGoalTab);
+  const pendingPageGoals = getMyGoalPagedGoals(getFilteredMyGoals("pending"), "pending").items;
+  const selectedPendingIds = getMyGoalSelection("pending");
 
   switch (action) {
     case "toggle-sidebar-group": {
       if (state.sidebarCollapsed) {
-        break;
-      } else {
-        setSidebarGroupExpanded(value, !isSidebarGroupExpanded(value));
-        state.openDropdown = null;
+        return;
       }
-      break;
+
+      state.openDropdown = null;
+      animateSidebarGroupToggle(value);
+      return;
     }
     case "navigate-page":
       state.activePage = normalizeGoalPage(value);
@@ -5159,8 +5808,20 @@ function onAction(action, value, target) {
       closeTransientPanels();
       state.overlay = null;
       break;
+    case "switch-user": {
+      const nextUserKey = normalizeCurrentUserKey(value);
+      closeTransientPanels();
+      state.overlay = null;
+      if (nextUserKey === state.currentUserKey) {
+        break;
+      }
+      state.currentUserKey = nextUserKey;
+      syncActivePageAccess();
+      showToast(`已切换到 ${getCurrentUserProfile().label}`);
+      break;
+    }
     case "dismiss-guide":
-      state.guideDismissed = true;
+      dismissGoalManagementGuide();
       break;
     case "request-demo-reset":
       state.overlay = buildResetDemoConfirmOverlay(1);
@@ -5195,7 +5856,7 @@ function onAction(action, value, target) {
       break;
     case "goal-config-select-group":
       state.goalConfig.selectedGroupId = value;
-      state.goalConfig.editingGroupId = null;
+      cancelGoalConfigGroupEditing();
       clearGoalConfigPanels();
       state.openDropdown = null;
       clearGoalConfigEditing();
@@ -5313,9 +5974,16 @@ function onAction(action, value, target) {
       break;
     case "set-goal-config-draft-align":
       if (state.goalConfig.editingDraft) {
+        const targetGoal = value ? getGoalConfigGoal(value) : null;
+        if (value && isGoalConfigMutualAlignBlocked(state.goalConfig.editingDraft, targetGoal)) {
+          showToast("所选目标已对齐当前目标，不能互相对齐");
+          state.openDropdown = null;
+          break;
+        }
+        const alignedGoal = value ? getGoalConfigGoal(value)?.title || value : "";
         state.goalConfig.editingDraft = {
           ...state.goalConfig.editingDraft,
-          alignedGoal: value || "",
+          alignedGoal,
         };
         state.openDropdown = null;
       }
@@ -5398,8 +6066,7 @@ function onAction(action, value, target) {
       createGoalConfigGroup(value);
       break;
     case "goal-config-rename-group":
-      state.goalConfig.editingGroupId = value;
-      clearGoalConfigPanels();
+      beginGoalConfigGroupEditing(value);
       break;
     case "goal-config-delete-group": {
       state.overlay = buildGoalConfigConfirmOverlay("group", { groupId: value });
@@ -5429,6 +6096,7 @@ function onAction(action, value, target) {
     case "confirm-goal-config-process-create":
       if (state.overlay && state.overlay.type === "goal-config-process-create") {
         const processName = normalizeProcessName(state.overlay.processName);
+        const currentApprover = getCurrentApprover();
         if (!processName) {
           showToast("请输入流程名称");
           break;
@@ -5437,8 +6105,8 @@ function onAction(action, value, target) {
           {
             id: createRuntimeId("goal-process"),
             name: processName,
-            creatorId: CURRENT_APPROVER.id,
-            creator: CURRENT_APPROVER.label,
+            creatorId: currentApprover.id,
+            creator: currentApprover.label,
             updatedAt: formatDateOnly(),
             isDefault: false,
           },
@@ -5585,6 +6253,34 @@ function onAction(action, value, target) {
     case "complete-pending-process":
       completePendingProcess(value);
       break;
+    case "toggle-my-goal-select-row":
+      if (selectedPendingIds.includes(value)) {
+        setMyGoalSelection(selectedPendingIds.filter((id) => id !== value), "pending");
+      } else {
+        setMyGoalSelection([...selectedPendingIds, value], "pending");
+      }
+      break;
+    case "toggle-my-goal-select-all": {
+      const pageIds = pendingPageGoals.map((goal) => goal.id);
+      const everySelected = pageIds.length > 0 && pageIds.every((id) => selectedPendingIds.includes(id));
+      if (everySelected) {
+        setMyGoalSelection(selectedPendingIds.filter((id) => !pageIds.includes(id)), "pending");
+      } else {
+        const merged = new Set([...selectedPendingIds, ...pageIds]);
+        setMyGoalSelection([...merged], "pending");
+      }
+      break;
+    }
+    case "approve-my-goal-batch":
+      if (selectedPendingIds.length) {
+        state.overlay = buildMyGoalPendingConfirmOverlay("approve", [...selectedPendingIds]);
+      }
+      break;
+    case "reject-my-goal-batch":
+      if (selectedPendingIds.length) {
+        state.overlay = buildMyGoalPendingConfirmOverlay("reject", [...selectedPendingIds]);
+      }
+      break;
     case "my-goal-page-prev":
       setMyGoalPage(Math.max(1, getMyGoalPage(myGoalTab) - 1), myGoalTab);
       break;
@@ -5646,6 +6342,10 @@ function onAction(action, value, target) {
       break;
     case "request-advance":
       state.overlay = buildConfirmOverlay("advance", [value], tabKey);
+      break;
+    case "view-confirm-instance":
+    case "view-rating-instance":
+      openExternalPage(GOAL_INSTANCE_DETAIL_URL);
       break;
     case "request-delete":
       state.overlay = buildConfirmOverlay("delete", [value], tabKey);
@@ -5788,6 +6488,11 @@ function onAction(action, value, target) {
 }
 
 document.addEventListener("click", (event) => {
+  const inlineEditResult = commitGoalConfigInlineEditingOnClick(event);
+  if (inlineEditResult.blocked) {
+    return;
+  }
+
   const actionTarget = event.target.closest("[data-action]");
   if (actionTarget) {
     onAction(actionTarget.dataset.action, actionTarget.dataset.value, actionTarget);
@@ -5815,6 +6520,11 @@ document.addEventListener("click", (event) => {
     (state.goalConfig.cardMenuId || state.goalConfig.groupMenuId || state.goalConfig.processMenuId)
   ) {
     clearGoalConfigPanels();
+    render();
+    return;
+  }
+
+  if (inlineEditResult.committed) {
     render();
   }
 });
@@ -5878,9 +6588,7 @@ document.addEventListener("input", (event) => {
     }
   }
   if (event.target.dataset.field === "goal-config-group-name") {
-    state.goalConfigGroups = state.goalConfigGroups.map((group) =>
-      group.id === event.target.dataset.groupId ? { ...group, label: event.target.value } : group
-    );
+    state.goalConfig.editingGroupName = event.target.value;
     if (!deferRender) {
       render(preserveFocus);
     }
@@ -5927,20 +6635,6 @@ document.addEventListener("input", (event) => {
   }
 });
 
-document.addEventListener("focusout", (event) => {
-  if (!(event.target instanceof HTMLInputElement)) {
-    return;
-  }
-  if (event.target.dataset.field === "goal-config-process-name" && event.target.dataset.processId) {
-    window.setTimeout(() => {
-      if (state.goalConfig.processEditingId === event.target.dataset.processId) {
-        saveGoalConfigProcessName(event.target.dataset.processId);
-        render();
-      }
-    }, 0);
-  }
-});
-
 document.addEventListener("keydown", (event) => {
   if (!(event.target instanceof HTMLInputElement)) {
     return;
@@ -5948,8 +6642,12 @@ document.addEventListener("keydown", (event) => {
   if (event.target.dataset.field === "goal-config-process-name" && event.target.dataset.processId) {
     if (event.key === "Enter" && !event.isComposing) {
       event.preventDefault();
-      saveGoalConfigProcessName(event.target.dataset.processId);
-      render();
+      const preserveFocus = getInputPreserveFocus(event.target);
+      if (saveGoalConfigProcessName(event.target.dataset.processId)) {
+        render();
+      } else {
+        render(preserveFocus);
+      }
       return;
     }
     if (event.key === "Escape") {
@@ -5987,15 +6685,43 @@ document.addEventListener("compositionend", (event) => {
   }
 });
 
-document.addEventListener("focusout", (event) => {
-  if (!(event.target instanceof HTMLInputElement)) {
-    return;
+function commitGoalConfigInlineEditingOnClick(event) {
+  if (!(event.target instanceof Element)) {
+    return { blocked: false, committed: false };
   }
-  if (event.target.dataset.field === "goal-config-group-name") {
-    state.goalConfig.editingGroupId = null;
-    render();
+
+  let committed = false;
+
+  if (state.goalConfig.editingGroupId) {
+    const groupId = state.goalConfig.editingGroupId;
+    const selector = `[data-field="goal-config-group-name"][data-group-id="${groupId}"]`;
+    if (!event.target.closest(selector)) {
+      const input = document.querySelector(selector);
+      const preserveFocus = input ? getInputPreserveFocus(input) : null;
+      if (!saveGoalConfigGroupName(groupId)) {
+        render(preserveFocus);
+        return { blocked: true, committed: false };
+      }
+      committed = true;
+    }
   }
-});
+
+  if (state.goalConfig.processEditingId) {
+    const processId = state.goalConfig.processEditingId;
+    const selector = `[data-field="goal-config-process-name"][data-process-id="${processId}"]`;
+    if (!event.target.closest(selector)) {
+      const input = document.querySelector(selector);
+      const preserveFocus = input ? getInputPreserveFocus(input) : null;
+      if (!saveGoalConfigProcessName(processId)) {
+        render(preserveFocus);
+        return { blocked: true, committed };
+      }
+      committed = true;
+    }
+  }
+
+  return { blocked: false, committed };
+}
 
 document.addEventListener("keydown", (event) => {
   if (event.key === "Escape") {
@@ -6009,16 +6735,26 @@ document.addEventListener("keydown", (event) => {
       state.openRowMenu ||
       state.goalConfig.cardMenuId ||
       state.goalConfig.groupMenuId ||
-      state.goalConfig.editingGroupId
+      state.goalConfig.editingGroupId ||
+      state.goalConfig.processEditingId
     ) {
       closeTransientPanels();
-      state.goalConfig.editingGroupId = null;
       render();
     }
   }
-  if (event.key === "Enter" && event.target instanceof HTMLInputElement && event.target.dataset.field === "goal-config-group-name") {
-    state.goalConfig.editingGroupId = null;
-    render();
+  if (
+    event.key === "Enter" &&
+    event.target instanceof HTMLInputElement &&
+    event.target.dataset.field === "goal-config-group-name" &&
+    !event.isComposing
+  ) {
+    event.preventDefault();
+    const preserveFocus = getInputPreserveFocus(event.target);
+    if (saveGoalConfigGroupName(event.target.dataset.groupId)) {
+      render();
+    } else {
+      render(preserveFocus);
+    }
   }
 });
 
