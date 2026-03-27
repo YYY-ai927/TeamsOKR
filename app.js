@@ -1,5 +1,6 @@
 const STORAGE_KEY = "okr-inprogress-demo:v3-demo-default";
 const TOAST_DURATION = 2200;
+const DROPDOWN_CHEVRON_ANIMATION_MS = 220;
 const DEFAULT_CURRENT_USER_KEY = "yanbo";
 const START_GOAL_PERIOD_TYPE_OPTIONS = [
   { key: "monthly", label: "月度" },
@@ -53,32 +54,17 @@ const GOAL_CONFIG_EXECUTOR_OPTIONS = [
   { id: "zhangxudong", label: "张旭东" },
   { id: "wuxuanyu", label: "吴宣宇" },
 ];
+const ALL_GOAL_CONFIG_EXECUTOR_IDS = GOAL_CONFIG_EXECUTOR_OPTIONS.map((item) => item.id);
 
 const DEFAULT_GOAL_CONFIG_GROUPS = [
   { id: "all", label: "全部分组", parentId: null, count: 0, kind: "all" },
-  { id: "group-demo", label: "未命名分组", parentId: null, count: 0, kind: "folder" },
   { id: "recycle", label: "周转箱", parentId: null, count: 0, kind: "recycle" },
 ];
 
 const GOAL_CONFIG_MAX_LEVEL = 5;
 const GOAL_CONFIG_MAX_DEPTH = GOAL_CONFIG_MAX_LEVEL - 1;
 
-const DEFAULT_GOAL_CONFIG_GOALS = [
-  {
-    id: "goal-config-demo",
-    groupId: "group-demo",
-    title: "演示目标",
-    type: "auto",
-    alignedGoal: "",
-    executors: ["yanbo"],
-    flow: "默认流程",
-    createdAt: "2026-03-24T10:00:00",
-    krs: [
-      { id: "gcfg-demo-kr-1", title: "完成演示关键结果一", threshold: "60", passing: "80", challenge: "100", weight: "50%" },
-      { id: "gcfg-demo-kr-2", title: "完成演示关键结果二", threshold: "1", passing: "2", challenge: "3", weight: "50%" },
-    ],
-  },
-];
+const DEFAULT_GOAL_CONFIG_GOALS = [];
 
 const DEFAULT_GOAL_CONFIG_PROCESSES = [
   {
@@ -231,14 +217,109 @@ const CONFIG_PREP_GUIDE_STEPS = [
   {
     step: 11,
     title: '“保存”按钮',
-    message: "配置完成，保存目标",
-    hint: "点击保存",
+    message: "配置完成，点击保存即可结束本次引导",
+    hint: "点击保存，结束引导",
     placement: "top",
     padding: 12,
     radius: 16,
     selectors: ['[data-guide-id="config-prep-save-goal"]'],
   },
 ];
+
+const LAUNCH_ADVANCE_GUIDE_STEPS = [
+  {
+    step: 1,
+    title: '侧边导航“目标管理”',
+    message: "从这里管理所有已发起的目标",
+    hint: "点击进入目标管理",
+    placement: "right",
+    padding: 10,
+    radius: 12,
+    selectors: ['[data-guide-id="launch-advance-nav-goal-management"]'],
+  },
+  {
+    step: 2,
+    title: '“发起目标”入口',
+    message: "目标配置完成！点这里发起考核",
+    hint: "点击打开发起弹窗",
+    placement: "left",
+    padding: 12,
+    radius: 14,
+    selectors: ['[data-guide-id="launch-advance-entry"]'],
+  },
+  {
+    step: 3,
+    title: "发起弹窗中第一个目标",
+    message: "选择刚创建的目标",
+    hint: "点击勾选目标",
+    placement: "right",
+    padding: 12,
+    radius: 14,
+    selectors: ['[data-guide-id="launch-advance-first-goal"]'],
+  },
+  {
+    step: 4,
+    title: '“发起”按钮',
+    message: "确认发起，目标进入确认审批",
+    hint: "点击发起目标",
+    placement: "top",
+    padding: 12,
+    radius: 16,
+    selectors: ['[data-guide-id="launch-advance-confirm"]'],
+  },
+  {
+    step: 5,
+    title: '阶段分段控件“执行中”',
+    message: "目标确认通过后会到这里，点击看看",
+    hint: "点击切换到执行中",
+    placement: "bottom",
+    padding: 12,
+    radius: 14,
+    selectors: ['[data-guide-id="launch-advance-stage-executing"]'],
+  },
+  {
+    step: 6,
+    title: '“推进评分”按钮',
+    message: '待目标需要推进评分，切换到执行中后，就可以推进评分了。点击“推进评分”或“完成引导”都可以结束本次引导',
+    hint: '点击“推进评分”或“完成引导”结束本次引导',
+    placement: "left",
+    padding: 12,
+    radius: 16,
+    selectors: ['[data-guide-id="launch-advance-advance-all"]'],
+  },
+];
+
+const GUIDE_MENU_GUIDE_STEPS = [
+  {
+    step: 1,
+    title: "引导教学",
+    message: "从这里重新学习所有功能引导",
+    hint: "点击打开引导菜单",
+    placement: "bottom",
+    padding: 6,
+    radius: 4,
+    closeLabel: "结束引导",
+    selectors: ['[data-guide-id="guide-help-trigger"] img'],
+  },
+];
+
+const CONFIG_PREP_GUIDE_DEFINITIONS = {
+  "goal-process": {
+    label: "目标与流程",
+    steps: CONFIG_PREP_GUIDE_STEPS,
+    completedToast: "目标与流程引导已完成",
+  },
+  "launch-advance": {
+    label: "发起与推进",
+    steps: LAUNCH_ADVANCE_GUIDE_STEPS,
+    completedToast: "发起与推进引导已完成",
+  },
+  "guide-menu": {
+    label: "如何使用引导",
+    steps: GUIDE_MENU_GUIDE_STEPS,
+    completedToast: "",
+  },
+};
 
 const GOAL_MANAGEMENT_GUIDE_TEXT =
   "若目标执行结束，可以按步骤发起评分： 选择考核周期 → 选择执行阶段 → 点击“推进评分”";
@@ -709,6 +790,9 @@ function makeDefaultState() {
     goalConfigProcesses: clone(DEFAULT_GOAL_CONFIG_PROCESSES),
     activeTab: "ongoing",
     goalManagementGuideDismissedByUser: {},
+    guideAutoStartedByUser: {},
+    guideUsagePromptCompletedByUser: {},
+    guideUsagePromptPendingByUser: {},
     filters: {
       ongoing: {
         keyword: "",
@@ -761,7 +845,7 @@ function makeDefaultState() {
     },
     goalConfig: {
       activeTab: "library",
-      selectedGroupId: "group-demo",
+      selectedGroupId: "all",
       expandedGroupIds: [],
       treeCollapsed: false,
       processGuideDismissed: false,
@@ -791,6 +875,7 @@ function makeDefaultState() {
 }
 
 let state = loadState();
+let pendingDropdownChevronAnimations = [];
 
 function loadState() {
   const base = makeDefaultState();
@@ -913,6 +998,65 @@ function loadState() {
   }
 }
 
+function queueDropdownChevronAnimation(key, direction) {
+  if (!key) {
+    return;
+  }
+
+  pendingDropdownChevronAnimations.push({ key, direction });
+}
+
+function animateDropdownChevron(key, direction) {
+  const chevron = document.querySelector(`[data-value="${key}"] .dropdown-chevron`);
+  if (!(chevron instanceof HTMLElement) || typeof chevron.animate !== "function") {
+    return;
+  }
+
+  const frames =
+    direction === "closing"
+      ? [{ transform: "rotate(180deg)" }, { transform: "rotate(0deg)" }]
+      : [{ transform: "rotate(0deg)" }, { transform: "rotate(180deg)" }];
+
+  chevron.animate(frames, {
+    duration: DROPDOWN_CHEVRON_ANIMATION_MS,
+    easing: "cubic-bezier(0.22, 1, 0.36, 1)",
+  });
+}
+
+function flushDropdownChevronAnimations() {
+  if (!pendingDropdownChevronAnimations.length) {
+    return;
+  }
+
+  const queuedAnimations = pendingDropdownChevronAnimations.slice();
+  pendingDropdownChevronAnimations = [];
+
+  requestAnimationFrame(() => {
+    queuedAnimations.forEach(({ key, direction }) => animateDropdownChevron(key, direction));
+  });
+}
+
+function setDropdownOpenState(nextDropdown) {
+  const previousDropdown = state.openDropdown;
+  if (previousDropdown === nextDropdown) {
+    return;
+  }
+
+  if (previousDropdown) {
+    queueDropdownChevronAnimation(previousDropdown, "closing");
+  }
+
+  if (nextDropdown) {
+    queueDropdownChevronAnimation(nextDropdown, "opening");
+  }
+
+  state.openDropdown = nextDropdown;
+}
+
+function toggleDropdownOpenState(dropdownKey) {
+  setDropdownOpenState(state.openDropdown === dropdownKey ? null : dropdownKey);
+}
+
 function sanitizeGoalConfigGroups(groups) {
   const source = Array.isArray(groups) && groups.length ? clone(groups) : clone(DEFAULT_GOAL_CONFIG_GROUPS);
   const nextGroups = source.map((group) => ({ ...group }));
@@ -952,6 +1096,35 @@ function sanitizeGoalConfigGroups(groups) {
   return nextGroups;
 }
 
+function getGoalConfigDefaultSelectedGroupId(groups, preferredGroupId) {
+  const normalizedGroups = Array.isArray(groups) ? groups : [];
+  const groupMap = new Map(normalizedGroups.map((group) => [group.id, group]));
+  if (preferredGroupId && groupMap.has(preferredGroupId)) {
+    return preferredGroupId;
+  }
+  if (groupMap.has("all")) {
+    return "all";
+  }
+  if (normalizedGroups.length) {
+    return normalizedGroups[0].id;
+  }
+  return "all";
+}
+
+function getGoalConfigDefaultDraftGroupId(groups, preferredGroupId) {
+  const normalizedGroups = Array.isArray(groups) ? groups : [];
+  const groupMap = new Map(normalizedGroups.map((group) => [group.id, group]));
+  const preferredGroup = preferredGroupId ? groupMap.get(preferredGroupId) : null;
+  if (preferredGroup && preferredGroup.kind === "folder") {
+    return preferredGroup.id;
+  }
+  const firstFolder = normalizedGroups.find((group) => group.kind === "folder");
+  if (firstFolder) {
+    return firstFolder.id;
+  }
+  return getGoalConfigDefaultSelectedGroupId(normalizedGroups, preferredGroupId);
+}
+
 function normalizeState(nextState) {
   const current = nextState || makeDefaultState();
   const currentUserKey = normalizeCurrentUserKey(current.currentUserKey);
@@ -961,6 +1134,7 @@ function normalizeState(nextState) {
   const completedGoalIds = new Set(current.completedGoals.map((goal) => goal.id));
   const processIds = new Set((current.goalConfigProcesses || clone(DEFAULT_GOAL_CONFIG_PROCESSES)).map((item) => item.id));
   const normalizedGoalConfigGroups = sanitizeGoalConfigGroups(current.goalConfigGroups);
+  const normalizedGoalConfigGroupIds = new Set(normalizedGoalConfigGroups.map((group) => group.id));
   const normalizedMyExecutingGoals = current.myExecutingGoals || clone(DEFAULT_MY_EXECUTING_GOALS);
   const normalizedMyCompletedGoals = current.myCompletedGoals || clone(DEFAULT_MY_COMPLETED_GOALS);
   const normalizedPendingGoals = (current.pendingGoals || clone(DEFAULT_PENDING_GOALS))
@@ -1004,6 +1178,9 @@ function normalizeState(nextState) {
     settingsNavExpanded: !!current.settingsNavExpanded,
     sidebarCollapsed: !!current.sidebarCollapsed,
     goalManagementGuideDismissedByUser: normalizeBooleanMap(current.goalManagementGuideDismissedByUser),
+    guideAutoStartedByUser: normalizeBooleanMap(current.guideAutoStartedByUser),
+    guideUsagePromptCompletedByUser: normalizeBooleanMap(current.guideUsagePromptCompletedByUser),
+    guideUsagePromptPendingByUser: normalizeBooleanMap(current.guideUsagePromptPendingByUser),
     selectionByTab: {
       ongoing: ((current.selectionByTab && current.selectionByTab.ongoing) || [])
         .filter((id) => ongoingGoalIds.has(id)),
@@ -1112,12 +1289,14 @@ function normalizeState(nextState) {
         current.goalConfig && ["library", "process"].includes(current.goalConfig.activeTab)
           ? current.goalConfig.activeTab
           : "library",
-      selectedGroupId:
-        (current.goalConfig && current.goalConfig.selectedGroupId) || "group-1-2",
+      selectedGroupId: getGoalConfigDefaultSelectedGroupId(
+        normalizedGoalConfigGroups,
+        current.goalConfig && current.goalConfig.selectedGroupId
+      ),
       expandedGroupIds:
         current.goalConfig && Array.isArray(current.goalConfig.expandedGroupIds)
-          ? current.goalConfig.expandedGroupIds
-          : ["group-1", "group-1-3", "group-1-3-3"],
+          ? current.goalConfig.expandedGroupIds.filter((id) => normalizedGoalConfigGroupIds.has(id))
+          : [],
       treeCollapsed: !!(current.goalConfig && current.goalConfig.treeCollapsed),
       processGuideDismissed: !!(current.goalConfig && current.goalConfig.processGuideDismissed),
       groupSearch: (current.goalConfig && current.goalConfig.groupSearch) || "",
@@ -1172,6 +1351,9 @@ function persistState() {
     goalConfigProcesses: state.goalConfigProcesses,
     activeTab: state.activeTab,
     goalManagementGuideDismissedByUser: state.goalManagementGuideDismissedByUser,
+    guideAutoStartedByUser: state.guideAutoStartedByUser,
+    guideUsagePromptCompletedByUser: state.guideUsagePromptCompletedByUser,
+    guideUsagePromptPendingByUser: state.guideUsagePromptPendingByUser,
     filters: state.filters,
     selectionByTab: state.selectionByTab,
     pageByTab: state.pageByTab,
@@ -1455,6 +1637,57 @@ function dismissGoalManagementGuide(userKey = state.currentUserKey) {
   };
 }
 
+function getGuideUserKey(userKey = state.currentUserKey) {
+  return normalizeCurrentUserKey(userKey);
+}
+
+function getGuideAutoStartKey(type, userKey = state.currentUserKey) {
+  return `${getGuideUserKey(userKey)}:${type}`;
+}
+
+function hasGuideAutoStarted(type, userKey = state.currentUserKey) {
+  return !!(state.guideAutoStartedByUser && state.guideAutoStartedByUser[getGuideAutoStartKey(type, userKey)]);
+}
+
+function markGuideAutoStarted(type, userKey = state.currentUserKey) {
+  state.guideAutoStartedByUser = {
+    ...(state.guideAutoStartedByUser || {}),
+    [getGuideAutoStartKey(type, userKey)]: true,
+  };
+}
+
+function isGuideUsagePromptCompleted(userKey = state.currentUserKey) {
+  return !!(
+    state.guideUsagePromptCompletedByUser && state.guideUsagePromptCompletedByUser[getGuideUserKey(userKey)]
+  );
+}
+
+function isGuideUsagePromptPending(userKey = state.currentUserKey) {
+  return !!(
+    state.guideUsagePromptPendingByUser && state.guideUsagePromptPendingByUser[getGuideUserKey(userKey)]
+  );
+}
+
+function queueGuideUsagePrompt(userKey = state.currentUserKey) {
+  const nextUserKey = getGuideUserKey(userKey);
+  state.guideUsagePromptPendingByUser = {
+    ...(state.guideUsagePromptPendingByUser || {}),
+    [nextUserKey]: true,
+  };
+}
+
+function completeGuideUsagePrompt(userKey = state.currentUserKey) {
+  const nextUserKey = getGuideUserKey(userKey);
+  state.guideUsagePromptPendingByUser = {
+    ...(state.guideUsagePromptPendingByUser || {}),
+    [nextUserKey]: false,
+  };
+  state.guideUsagePromptCompletedByUser = {
+    ...(state.guideUsagePromptCompletedByUser || {}),
+    [nextUserKey]: true,
+  };
+}
+
 function canAdvanceSelection(tabKey = getTabKey()) {
   if (getTabKey(tabKey) !== "ongoing") {
     return false;
@@ -1620,6 +1853,48 @@ function getGoalConfigDeleteScope(groupId) {
   return { groupIds, groupSet, goals };
 }
 
+function getGoalConfigGroupPathLabel(groupId) {
+  const group = getGoalConfigGroup(groupId);
+  if (!group) {
+    return "未知分组";
+  }
+  if (group.kind === "recycle") {
+    return group.label || "周转箱";
+  }
+  const ancestorLabels = getGoalConfigAncestors(groupId)
+    .reverse()
+    .map((id) => getGoalConfigGroup(id)?.label)
+    .filter(Boolean);
+  return [...ancestorLabels, group.label || "未命名分组"].join(" / ");
+}
+
+function getGoalConfigTransferGroupOptions(goalOrId) {
+  const goal = typeof goalOrId === "string" ? getGoalConfigGoal(goalOrId) : goalOrId;
+  const currentGroupId = goal?.groupId || null;
+  const options = [];
+
+  const walk = (parentId = null) => {
+    getGoalConfigChildren(parentId).forEach((group) => {
+      if (group.kind === "all") {
+        return;
+      }
+      if (group.id !== currentGroupId) {
+        options.push({
+          id: group.id,
+          label: getGoalConfigGroupPathLabel(group.id),
+          kind: group.kind,
+        });
+      }
+      if (group.kind === "folder") {
+        walk(group.id);
+      }
+    });
+  };
+
+  walk(null);
+  return options;
+}
+
 function getGoalConfigGroupCount(groupId) {
   if (groupId === "all") {
     return state.goalConfigGoals.length;
@@ -1664,14 +1939,7 @@ function getGoalConfigVisibleGroups() {
 }
 
 function resolveGoalConfigTargetGroupId(groupId = state.goalConfig.selectedGroupId) {
-  const target = getGoalConfigGroup(groupId);
-  if (!target) {
-    return "recycle";
-  }
-  if (target.kind === "all" || target.kind === "recycle") {
-    return "recycle";
-  }
-  return target.id;
+  return getGoalConfigDefaultDraftGroupId(state.goalConfigGroups, groupId);
 }
 
 function getGoalConfigGoal(goalId) {
@@ -1680,6 +1948,29 @@ function getGoalConfigGoal(goalId) {
 
 function sortGoalConfigGoals(goals) {
   return [...goals].sort((left, right) => new Date(right.createdAt).getTime() - new Date(left.createdAt).getTime());
+}
+
+function getGoalConfigGoalsByGroup(groupId) {
+  return sortGoalConfigGoals(state.goalConfigGoals.filter((goal) => goal.groupId === groupId));
+}
+
+function getGoalConfigTransferSelectedGoals(overlay = state.overlay) {
+  if (!overlay || overlay.type !== "goal-config-transfer") {
+    return [];
+  }
+  const selectedIds = new Set(Array.isArray(overlay.goalIds) ? overlay.goalIds : []);
+  return getGoalConfigGoalsByGroup(overlay.sourceGroupId).filter((goal) => selectedIds.has(goal.id));
+}
+
+function getGoalConfigTransferSummary(overlay = state.overlay) {
+  const selectedGoals = getGoalConfigTransferSelectedGoals(overlay);
+  if (!selectedGoals.length) {
+    return "请选择目标";
+  }
+  if (selectedGoals.length <= 2) {
+    return selectedGoals.map((goal) => goal.title).join("、");
+  }
+  return `${selectedGoals[0].title}、${selectedGoals[1].title} 等 ${selectedGoals.length} 个目标`;
 }
 
 function getFilteredGoalConfigGoals() {
@@ -1907,9 +2198,46 @@ function createGoalConfigDraft(goal) {
   );
 }
 
+function createGoalConfigTestingDraft(goal) {
+  const draft = createGoalConfigDraft({
+    id: goal?.id || `goal-config-testing-${Date.now()}`,
+    groupId: goal?.groupId || resolveGoalConfigTargetGroupId(),
+    title: "测试经营目标模板",
+    type: "auto",
+    alignedGoal: "",
+    executors: clone(ALL_GOAL_CONFIG_EXECUTOR_IDS),
+    flow: getDefaultGoalConfigFlow(),
+    createdAt: new Date().toISOString(),
+    isNew: true,
+    krs: [createGoalConfigKr("auto", 0), createGoalConfigKr("auto", 1)],
+    ...(goal || {}),
+  });
+
+  draft.krs = [
+    {
+      ...draft.krs[0],
+      title: "经营复盘覆盖率达到目标值",
+      threshold: "60",
+      passing: "80",
+      challenge: "100",
+      weight: "50%",
+    },
+    {
+      ...draft.krs[1],
+      title: "重点经营动作按期闭环",
+      threshold: "1",
+      passing: "2",
+      challenge: "3",
+      weight: "50%",
+    },
+  ];
+
+  return normalizeGoalConfigDraft(draft);
+}
+
 function getGoalConfigLaunchGoals() {
   return sortGoalConfigGoals(state.goalConfigGoals)
-    .filter((goal) => goal.groupId !== "recycle" && goal.flow && (goal.executors || []).length)
+    .filter((goal) => isGoalConfigLaunchReadyGoal(goal))
     .map((goal) => ({
       id: goal.id,
       title: goal.title,
@@ -1924,6 +2252,20 @@ function getGoalConfigLaunchGoals() {
       createdAt: goal.createdAt,
       krs: clone(goal.krs || []),
     }));
+}
+
+function isGoalConfigLaunchReadyGoal(goal) {
+  if (!goal || goal.groupId === "recycle") {
+    return false;
+  }
+
+  const hasTitle = !!String(goal.title || "").trim();
+  const hasFlow = !!String(goal.flow || "").trim();
+  const hasExecutors = Array.isArray(goal.executors) && goal.executors.length > 0;
+  const hasKrs = Array.isArray(goal.krs) && goal.krs.length > 0;
+  const hasKrTitles = hasKrs && goal.krs.every((kr) => !!String(kr.title || "").trim());
+
+  return hasTitle && hasFlow && hasExecutors && hasKrs && hasKrTitles;
 }
 
 function sortGoalConfigProcesses(processes) {
@@ -2174,28 +2516,133 @@ function completeGoalConfigProcessGuide() {
   openGoalConfigProcessEditor();
 }
 
+function getConfigPrepGuideType() {
+  const guideType = state.configPrepGuide && state.configPrepGuide.type;
+  return CONFIG_PREP_GUIDE_DEFINITIONS[guideType] ? guideType : "goal-process";
+}
+
+function getConfigPrepGuideMeta(type = getConfigPrepGuideType()) {
+  return CONFIG_PREP_GUIDE_DEFINITIONS[type] || CONFIG_PREP_GUIDE_DEFINITIONS["goal-process"];
+}
+
+function getConfigPrepGuideSteps(type = getConfigPrepGuideType()) {
+  return getConfigPrepGuideMeta(type).steps;
+}
+
+function isConfigPrepGuideLastStep() {
+  if (!state.configPrepGuide) {
+    return false;
+  }
+
+  return Number(state.configPrepGuide.step) === getConfigPrepGuideSteps().length;
+}
+
 function getConfigPrepGuideStep(step = state.configPrepGuide && state.configPrepGuide.step) {
-  return CONFIG_PREP_GUIDE_STEPS.find((item) => item.step === Number(step)) || null;
+  return getConfigPrepGuideSteps().find((item) => item.step === Number(step)) || null;
+}
+
+function isGuideTypeStep(type, step) {
+  return !!state.configPrepGuide && getConfigPrepGuideType() === type && Number(state.configPrepGuide.step) === Number(step);
 }
 
 function isConfigPrepGuideStep(step) {
-  return !!state.configPrepGuide && Number(state.configPrepGuide.step) === Number(step);
+  return isGuideTypeStep("goal-process", step);
 }
 
-function startConfigPrepGuide() {
+function isLaunchAdvanceGuideStep(step) {
+  return isGuideTypeStep("launch-advance", step);
+}
+
+function isGuideMenuGuideStep(step) {
+  return isGuideTypeStep("guide-menu", step);
+}
+
+function getGuideRequirementCopy(type) {
+  if (type === "launch-advance") {
+    return "需具备“目标管理”页面权限，且目标库中至少有 1 个完整可发起目标";
+  }
+  return "需具备“目标配置”页面权限";
+}
+
+function getGuideStartBlockedMessage(type, profile = getCurrentUserProfile()) {
+  if (type === "launch-advance") {
+    if (!isPageAllowedForProfile("goal-management", profile)) {
+      return '无法开始“发起与推进”引导：当前角色缺少“目标管理”页面权限';
+    }
+    if (!getGoalConfigLaunchGoals().length) {
+      return '无法开始“发起与推进”引导：目标库中至少需要 1 个完整可发起的目标';
+    }
+    return "";
+  }
+
+  if (!isPageAllowedForProfile("goal-config", profile)) {
+    return '无法开始“目标与流程”引导：当前角色缺少“目标配置”页面权限';
+  }
+
+  return "";
+}
+
+function renderTopbarGuideOption(action, title, type) {
+  return `
+    <div class="topbar-help-option-wrap">
+      <button class="dropdown-option topbar-help-option" data-action="${escapeHtml(action)}" type="button" role="menuitem">
+        <span class="topbar-help-option-title">${escapeHtml(title)}</span>
+      </button>
+      <div class="topbar-help-tooltip" aria-hidden="true">${escapeHtml(getGuideRequirementCopy(type))}</div>
+      <div class="topbar-help-tooltip-arrow" aria-hidden="true"></div>
+    </div>
+  `;
+}
+
+function startConfigPrepGuideByType(type, startStep = 1) {
+  const blockedMessage = getGuideStartBlockedMessage(type);
+  if (blockedMessage) {
+    state.openDropdown = null;
+    showToast(blockedMessage);
+    return false;
+  }
   closeTransientPanels();
   clearGoalConfigEditing();
   state.overlay = null;
   state.sidebarCollapsed = false;
   setSidebarGroupExpanded("goal", true);
   state.goalConfig.treeCollapsed = false;
-  state.configPrepGuide = { step: 1 };
+  state.configPrepGuide = { type, step: 1 };
+  if (Number(startStep) > 1) {
+    setConfigPrepGuideStep(startStep);
+  }
+  return true;
+}
+
+function startConfigPrepGuide(startStep = 1) {
+  return startConfigPrepGuideByType("goal-process", startStep);
+}
+
+function startLaunchAdvanceGuide(startStep = 1) {
+  return startConfigPrepGuideByType("launch-advance", startStep);
+}
+
+function startGuideUsagePromptGuide() {
+  closeTransientPanels();
+  clearGoalConfigEditing();
+  state.overlay = null;
+  state.configPrepGuide = { type: "guide-menu", step: 1 };
+  return true;
 }
 
 function closeConfigPrepGuide(showCompletedToast = false) {
+  const guideType = state.configPrepGuide ? getConfigPrepGuideType() : "";
+  const guideMeta = state.configPrepGuide ? getConfigPrepGuideMeta(guideType) : null;
   state.configPrepGuide = null;
-  if (showCompletedToast) {
-    showToast("配置准备引导已完成");
+
+  if (guideType === "guide-menu") {
+    completeGuideUsagePrompt();
+  } else if (guideType && !isGuideUsagePromptPending() && !isGuideUsagePromptCompleted()) {
+    queueGuideUsagePrompt();
+  }
+
+  if (showCompletedToast && guideMeta && guideMeta.completedToast) {
+    showToast(guideMeta.completedToast);
   }
 }
 
@@ -2204,21 +2651,33 @@ function setConfigPrepGuideStep(step) {
     return;
   }
 
-  if (step > CONFIG_PREP_GUIDE_STEPS.length) {
+  const guideType = getConfigPrepGuideType();
+  const guideSteps = getConfigPrepGuideSteps(guideType);
+
+  if (step > guideSteps.length) {
     closeConfigPrepGuide(true);
     return;
   }
 
-  if (step <= 1) {
+  if (guideType === "goal-process") {
+    if (step <= 1) {
+      state.sidebarCollapsed = false;
+      setSidebarGroupExpanded("goal", true);
+    }
+
+    if (step >= 6) {
+      state.goalConfig.treeCollapsed = false;
+    }
+  } else if (guideType === "launch-advance") {
     state.sidebarCollapsed = false;
     setSidebarGroupExpanded("goal", true);
+
+    if (step >= 2) {
+      state.activePage = "goal-management";
+    }
   }
 
-  if (step >= 6) {
-    state.goalConfig.treeCollapsed = false;
-  }
-
-  state.configPrepGuide = { step };
+  state.configPrepGuide = { type: guideType, step };
 }
 
 function advanceConfigPrepGuide(nextStep) {
@@ -2226,6 +2685,44 @@ function advanceConfigPrepGuide(nextStep) {
     return;
   }
   setConfigPrepGuideStep(nextStep);
+}
+
+function maybeStartAutomaticGuide() {
+  if (state.configPrepGuide || state.overlay) {
+    return false;
+  }
+
+  if (isGuideUsagePromptPending() && !isGuideUsagePromptCompleted()) {
+    return startGuideUsagePromptGuide();
+  }
+
+  const currentUser = getCurrentUserProfile();
+
+  if (
+    state.activePage === "goal-config" &&
+    !hasGuideAutoStarted("goal-process", currentUser.key) &&
+    !getGuideStartBlockedMessage("goal-process", currentUser)
+  ) {
+    const started = startConfigPrepGuide(2);
+    if (started) {
+      markGuideAutoStarted("goal-process", currentUser.key);
+    }
+    return started;
+  }
+
+  if (
+    state.activePage === "goal-management" &&
+    !hasGuideAutoStarted("launch-advance", currentUser.key) &&
+    !getGuideStartBlockedMessage("launch-advance", currentUser)
+  ) {
+    const started = startLaunchAdvanceGuide(2);
+    if (started) {
+      markGuideAutoStarted("launch-advance", currentUser.key);
+    }
+    return started;
+  }
+
+  return false;
 }
 
 function getConfigPrepGuideFirstKrId() {
@@ -2370,10 +2867,13 @@ function getConfigPrepGuideTargetRect(step, elements) {
 }
 
 function renderConfigPrepGuideBubble(step) {
+  const guideMeta = getConfigPrepGuideMeta();
+  const isLastStep = Number(step.step) === guideMeta.steps.length;
+  const closeLabel = step.closeLabel || (isLastStep ? "完成引导" : "结束引导");
   return `
     <div class="config-prep-guide-bubble" data-config-prep-guide-bubble data-placement="${escapeHtml(step.placement || "right")}">
-      <button class="config-prep-guide-close" data-action="close-config-prep-guide" type="button" aria-label="结束引导">结束引导</button>
-      <div class="config-prep-guide-bubble-badge">配置准备 ${step.step}/${CONFIG_PREP_GUIDE_STEPS.length}</div>
+      <button class="config-prep-guide-close" data-action="close-config-prep-guide" type="button" aria-label="${escapeHtml(closeLabel)}">${escapeHtml(closeLabel)}</button>
+      <div class="config-prep-guide-bubble-badge">${escapeHtml(guideMeta.label)} ${step.step}/${guideMeta.steps.length}</div>
       <div class="config-prep-guide-bubble-title">${escapeHtml(step.title)}</div>
       <div class="config-prep-guide-bubble-copy">${escapeHtml(step.message)}</div>
       <div class="config-prep-guide-bubble-hint">${escapeHtml(step.hint)}</div>
@@ -2572,11 +3072,11 @@ function buildResetDemoConfirmOverlay(step = 1) {
     summary:
       step === 1
         ? "将清空当前演示页面的本地缓存。"
-        : "重置后会恢复到默认演示数据，并刷新页面。",
+        : "重置后会恢复为空的初始数据，并刷新页面。",
     description:
       step === 1
         ? "这会清除当前 demo 的浏览器本地缓存，适合重新开始测试。"
-        : "确认后会删除 okr-inprogress-demo 的本地缓存键并刷新当前页面。",
+        : "确认后会删除 okr-inprogress-demo 的本地缓存键，并以空目标库重新加载当前页面。",
   };
 }
 
@@ -2883,6 +3383,35 @@ function resetMyGoalListState(tabKey = getMyGoalTabKey()) {
   state.openRowMenu = null;
 }
 
+function clearAllTableSelections() {
+  state.selectionByTab.ongoing = [];
+  state.selectionByTab.completed = [];
+  state.myGoals.selectionByTab.pending = [];
+  state.myGoals.selectionByTab.executing = [];
+  state.myGoals.selectionByTab.completed = [];
+  state.goalConfig.processSelection = [];
+  state.goalConfig.processMenuId = null;
+}
+
+function refreshCurrentPageTableState(pageKey = state.activePage) {
+  const currentPage = normalizeGoalPage(pageKey);
+  clearAllTableSelections();
+
+  if (currentPage === "goal-management") {
+    setActivePage(1, getTabKey(state.activeTab));
+    return;
+  }
+
+  if (currentPage === "my-goals") {
+    setMyGoalPage(1, getMyGoalTabKey(state.myGoals.activeTab));
+    return;
+  }
+
+  if (currentPage === "goal-config") {
+    setGoalConfigProcessPage(1);
+  }
+}
+
 function closeTransientPanels() {
   state.openDropdown = null;
   state.openRowMenu = null;
@@ -2965,8 +3494,20 @@ function renderArrow(direction, className = "") {
   return `<span class="ui-arrow ui-arrow-${direction} ${className}" aria-hidden="true"></span>`;
 }
 
+// Exact chevron geometry pulled from the Figma base select component (node 296:19731).
+function renderDropdownChevronIcon(className = "", size = "md") {
+  const classes = ["dropdown-chevron", size === "sm" ? "is-sm" : "", className].filter(Boolean).join(" ");
+  return `
+    <span class="${classes}" aria-hidden="true">
+      <svg class="dropdown-chevron-vector" viewBox="0 0 11.594 6.1095" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <path d="M10.7965 0.141002L5.7965 5.016L0.7965 0.141002C0.702833 0.0473354 0.5935 0.000501969 0.4685 0.000501969C0.3435 0.000501969 0.234167 0.0473354 0.1405 0.141002C0.0468334 0.234669 0 0.344002 0 0.469002C0 0.594002 0.0416667 0.698169 0.125 0.781502L5.453 5.969C5.54667 6.06267 5.66133 6.1095 5.797 6.1095C5.93267 6.1095 6.04733 6.06267 6.141 5.969L11.469 0.797002C11.5523 0.703335 11.594 0.591335 11.594 0.461002C11.594 0.330668 11.5472 0.221335 11.4535 0.133002C11.3598 0.0446688 11.2505 0.0003351 11.1255 1.76678e-06C11.0005 -0.000331567 10.8912 0.0465018 10.7975 0.140502L10.7965 0.141002Z" fill="currentColor"/>
+      </svg>
+    </span>
+  `;
+}
+
 function renderControlArrow(className = "") {
-  return `<span class="${`control-arrow ${className}`.trim()}" aria-hidden="true"></span>`;
+  return renderDropdownChevronIcon(`control-arrow ${className}`.trim());
 }
 
 function isDropdownOpen(dropdownKey) {
@@ -3148,6 +3689,7 @@ function renderSidebar() {
                 data-action="navigate-page"
                 data-value="${item.pageKey}"
                 ${group.key === "goal" && item.pageKey === "goal-config" ? 'data-guide-id="config-prep-nav-goal-config"' : ""}
+                ${group.key === "goal" && item.pageKey === "goal-management" ? 'data-guide-id="launch-advance-nav-goal-management"' : ""}
                 type="button"
               >
                 <span class="submenu-label">${item.label}</span>
@@ -3213,6 +3755,7 @@ function renderTopbar() {
             class="icon-button topbar-icon-trigger ${state.openDropdown === "help-menu" ? "is-open" : ""}"
             data-action="toggle-dropdown"
             data-value="help-menu"
+            data-guide-id="guide-help-trigger"
             type="button"
             aria-haspopup="menu"
             aria-expanded="${state.openDropdown === "help-menu" ? "true" : "false"}"
@@ -3224,9 +3767,8 @@ function renderTopbar() {
             state.openDropdown === "help-menu"
               ? `
                 <div class="dropdown-panel topbar-help-menu" role="menu" aria-label="帮助菜单">
-                  <button class="dropdown-option topbar-help-option" data-action="start-config-prep-guide" type="button" role="menuitem">
-                    <span class="topbar-help-option-title">配置准备</span>
-                  </button>
+                  ${renderTopbarGuideOption("start-config-prep-guide", "目标与流程", "goal-process")}
+                  ${renderTopbarGuideOption("start-launch-advance-guide", "发起与推进", "launch-advance")}
                 </div>
               `
               : ""
@@ -3321,7 +3863,13 @@ function renderOngoingFilterRow(filteredGoals) {
           ]
             .map(
               (item) => `
-                <button class="segment ${filters.stage === item.key ? "is-active" : ""}" data-action="set-stage" data-value="${item.key}" type="button">
+                <button
+                  class="segment ${filters.stage === item.key ? "is-active" : ""}"
+                  data-action="set-stage"
+                  data-value="${item.key}"
+                  ${item.key === "executing" ? 'data-guide-id="launch-advance-stage-executing"' : ""}
+                  type="button"
+                >
                   ${item.label}
                 </button>
               `
@@ -3342,6 +3890,7 @@ function renderOngoingFilterRow(filteredGoals) {
         <button
           class="primary-action ${advanceState.isExecutingStage ? "is-enabled" : ""}"
           data-action="advance-all"
+          data-guide-id="launch-advance-advance-all"
           type="button"
           aria-disabled="${advanceState.isExecutingStage ? "false" : "true"}"
         >
@@ -4098,11 +4647,7 @@ function renderGoalConfigCreateArrowIcon() {
 }
 
 function renderGoalConfigSelectArrow(className = "") {
-  return renderGoalConfigSvgIcon(
-    `goal-config-select-arrow ${className}`.trim(),
-    "0 0 11.594 6.1095",
-    '<path d="M10.7965 0.141002L5.7965 5.016L0.7965 0.141002C0.702833 0.0473354 0.5935 0.000501969 0.4685 0.000501969C0.3435 0.000501969 0.234167 0.0473354 0.1405 0.141002C0.0468334 0.234669 0 0.344002 0 0.469002C0 0.594002 0.0416667 0.698169 0.125 0.781502L5.453 5.969C5.54667 6.06267 5.66133 6.1095 5.797 6.1095C5.93267 6.1095 6.04733 6.06267 6.141 5.969L11.469 0.797002C11.5523 0.703335 11.594 0.591335 11.594 0.461002C11.594 0.330668 11.5472 0.221335 11.4535 0.133002C11.3598 0.0446688 11.2505 0.0003351 11.1255 1.76678e-06C11.0005 -0.000331567 10.8912 0.0465018 10.7975 0.140502L10.7965 0.141002Z" fill="currentColor"/>'
-  );
+  return renderDropdownChevronIcon(`goal-config-select-arrow ${className}`.trim());
 }
 
 function renderGoalConfigToolbarMoreIcon() {
@@ -4224,6 +4769,7 @@ function renderGoalConfigCardMenu(goal) {
   return `
     <div class="goal-config-card-menu dropdown-panel">
       <button class="dropdown-option" data-action="goal-config-copy" data-value="${goal.id}" type="button">复制目标</button>
+      <button class="dropdown-option" data-action="goal-config-transfer" data-value="${goal.id}" type="button">转移目标</button>
       <button class="dropdown-option" data-action="goal-config-record" data-value="${goal.id}" type="button">目标记录</button>
       <button class="dropdown-option danger" data-action="goal-config-delete" data-value="${goal.id}" type="button">删除目标</button>
     </div>
@@ -4237,6 +4783,7 @@ function renderGoalConfigGroupMenu(group) {
   if (group.kind === "recycle") {
     return `
       <div class="goal-config-group-menu dropdown-panel">
+        <button class="dropdown-option" data-action="goal-config-transfer-group-goal" data-value="${group.id}" type="button">转移目标</button>
         <button class="dropdown-option danger" data-action="goal-config-empty-recycle" type="button">清空周转箱</button>
       </div>
     `;
@@ -4244,6 +4791,7 @@ function renderGoalConfigGroupMenu(group) {
   const canAddChild = getGoalConfigGroupLevel(group) < GOAL_CONFIG_MAX_DEPTH;
   return `
     <div class="goal-config-group-menu dropdown-panel">
+      <button class="dropdown-option" data-action="goal-config-transfer-group-goal" data-value="${group.id}" type="button">转移目标</button>
       ${
         canAddChild
           ? `<button class="dropdown-option" data-action="goal-config-add-child-group" data-value="${group.id}" type="button">新增子级分组</button>`
@@ -5117,7 +5665,7 @@ function renderGoalConfigPage() {
                 流程库
               </button>
             </div>
-            <button class="launch-button" data-action="open-start-goal" type="button">
+            <button class="launch-button" data-action="open-start-goal" data-guide-id="launch-advance-entry" type="button">
               <span>发起目标</span>
               ${renderArrow("right", "ui-arrow-xs")}
             </button>
@@ -5228,7 +5776,7 @@ function renderGoalManagementPage() {
               <button class="tab ${state.activeTab === "ongoing" ? "is-active" : ""}" data-action="set-tab" data-value="ongoing" type="button">进行中</button>
               <button class="tab ${state.activeTab === "completed" ? "is-active" : ""}" data-action="set-tab" data-value="completed" type="button">已完成</button>
             </div>
-            <button class="launch-button" data-action="open-start-goal" type="button">
+            <button class="launch-button" data-action="open-start-goal" data-guide-id="launch-advance-entry" type="button">
               <span>发起目标</span>
               ${renderArrow("right", "ui-arrow-xs")}
             </button>
@@ -5430,6 +5978,144 @@ function renderConfirmModal(overlay) {
   `;
 }
 
+function renderGoalConfigTransferModalInner(overlay) {
+  const sourceGoals = overlay.sourceGroupId ? getGoalConfigGoalsByGroup(overlay.sourceGroupId) : [];
+  const selectedGoalIds = new Set(Array.isArray(overlay.goalIds) ? overlay.goalIds : []);
+  const selectedGoals = sourceGoals.filter((goal) => selectedGoalIds.has(goal.id));
+  const options = overlay.sourceGroupId ? getGoalConfigTransferGroupOptions({ groupId: overlay.sourceGroupId }) : [];
+  const activeOption = options.find((item) => item.id === overlay.targetGroupId) || null;
+  const sourceLabel = getGoalConfigGroupPathLabel(overlay.sourceGroupId);
+  const selectedSummary = getGoalConfigTransferSummary(overlay);
+
+  return `
+      <div class="panel-header">
+        <div>
+          <h2 class="panel-title">转移目标</h2>
+          <p class="panel-subtitle">支持一次选择多个目标，并统一转移到一个新的目标分组。</p>
+        </div>
+        <button class="close-button" data-action="close-overlay" type="button">×</button>
+      </div>
+      <div class="panel-content goal-config-transfer-content">
+        <div class="goal-config-transfer-field">
+          <span class="goal-config-transfer-label">当前分组</span>
+          <div class="goal-config-transfer-value">${escapeHtml(sourceLabel)}</div>
+        </div>
+        <div class="goal-config-transfer-field">
+          <span class="goal-config-transfer-label">转移目标</span>
+          <div class="control goal-config-transfer-control">
+            <button
+              class="${dropdownTriggerClass("control-button goal-config-select-button goal-config-select-wide", "goal-config-transfer-goal")}"
+              data-action="toggle-goal-config-dropdown"
+              data-value="goal-config-transfer-goal"
+              type="button"
+              aria-expanded="${isDropdownOpen("goal-config-transfer-goal") ? "true" : "false"}"
+              ${sourceGoals.length ? "" : "disabled"}
+            >
+              <span class="truncate">${escapeHtml(selectedSummary)}</span>
+              ${renderGoalConfigSelectArrow()}
+            </button>
+            ${
+              state.openDropdown === "goal-config-transfer-goal"
+                ? `
+                  <div class="dropdown-panel goal-config-inline-menu goal-config-transfer-menu">
+                    ${
+                      sourceGoals.length
+                        ? sourceGoals
+                            .map(
+                              (item) => `
+                                <button class="dropdown-option ${selectedGoalIds.has(item.id) ? "is-active" : ""}" data-action="toggle-goal-config-transfer-goal" data-value="${item.id}" type="button">
+                                  ${renderCheckboxIndicator(selectedGoalIds.has(item.id) ? "checked" : "unchecked")}
+                                  <span class="truncate">${escapeHtml(item.title)}</span>
+                                </button>
+                              `
+                            )
+                            .join("")
+                        : '<div class="member-heading">暂无可转移目标</div>'
+                    }
+                  </div>
+                `
+                : ""
+            }
+          </div>
+        </div>
+        <div class="goal-config-transfer-field">
+          <span class="goal-config-transfer-label">目标分组</span>
+          <div class="control goal-config-transfer-control">
+            <button
+              class="${dropdownTriggerClass("control-button goal-config-select-button goal-config-select-wide", "goal-config-transfer-group")}"
+              data-action="toggle-goal-config-dropdown"
+              data-value="goal-config-transfer-group"
+              type="button"
+              aria-expanded="${isDropdownOpen("goal-config-transfer-group") ? "true" : "false"}"
+              ${activeOption ? "" : "disabled"}
+            >
+              <span class="truncate">${escapeHtml(activeOption ? activeOption.label : "暂无可转移分组")}</span>
+              ${renderGoalConfigSelectArrow()}
+            </button>
+            ${
+              state.openDropdown === "goal-config-transfer-group"
+                ? `
+                  <div class="dropdown-panel goal-config-inline-menu goal-config-transfer-menu">
+                    ${
+                      options.length
+                        ? options
+                            .map(
+                              (item) => `
+                                <button class="dropdown-option ${activeOption?.id === item.id ? "is-active" : ""}" data-action="set-goal-config-transfer-group" data-value="${item.id}" type="button">
+                                  ${escapeHtml(item.label)}
+                                </button>
+                              `
+                            )
+                            .join("")
+                        : '<div class="member-heading">暂无可转移分组</div>'
+                    }
+                  </div>
+                `
+                : ""
+            }
+          </div>
+          <div class="goal-config-transfer-hint">支持转移到其他自定义分组，也支持移入或移出周转箱。</div>
+        </div>
+      </div>
+      <div class="panel-footer">
+        <button class="modal-button" data-action="close-overlay" type="button">取消</button>
+        <button class="modal-button-primary" data-action="confirm-goal-config-transfer" type="button" ${selectedGoals.length && activeOption ? "" : "disabled"}>确认转移</button>
+      </div>
+  `;
+}
+
+function syncGoalConfigTransferModal() {
+  if (!state.overlay || state.overlay.type !== "goal-config-transfer") {
+    return false;
+  }
+
+  const modal = document.querySelector(".goal-config-transfer-modal");
+  if (!(modal instanceof HTMLElement)) {
+    return false;
+  }
+
+  const menuScrollTops = [...modal.querySelectorAll(".goal-config-transfer-menu")].map((menu) =>
+    menu instanceof HTMLElement ? menu.scrollTop : 0
+  );
+
+  modal.innerHTML = renderGoalConfigTransferModalInner(state.overlay);
+  flushDropdownChevronAnimations();
+
+  modal.querySelectorAll(".goal-config-transfer-menu").forEach((menu, index) => {
+    if (menu instanceof HTMLElement) {
+      menu.scrollTop = menuScrollTops[index] || 0;
+    }
+  });
+  return true;
+}
+
+function renderGoalConfigTransferModal(overlay) {
+  return `
+    <div class="backdrop goal-config-transfer-backdrop" data-action="close-overlay"></div>
+    <div class="modal goal-config-transfer-modal config-prep-guide-static-modal" data-overlay-panel="true">${renderGoalConfigTransferModalInner(overlay)}</div>
+  `;
+}
+
 function renderStartGoalRemoveIcon() {
   return `
     <svg class="start-goal-remove-icon" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
@@ -5440,13 +6126,7 @@ function renderStartGoalRemoveIcon() {
 }
 
 function renderStartGoalChevronIcon(size = "md") {
-  const iconSize = size === "sm" ? 14 : 16;
-  const className = size === "sm" ? "start-goal-chevron-icon is-sm" : "start-goal-chevron-icon";
-  return `
-    <svg class="${className}" viewBox="0 0 ${iconSize} ${iconSize}" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
-      <path d="M4.5 6L8 9.5L11.5 6" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
-    </svg>
-  `;
+  return renderDropdownChevronIcon("start-goal-chevron-icon", size);
 }
 
 function renderStartGoalModalInner(overlay) {
@@ -5520,8 +6200,14 @@ function renderStartGoalModalInner(overlay) {
               available.length
                 ? available
                     .map(
-                      (goal) => `
-                        <button class="start-goal-item" data-action="toggle-library-goal" data-value="${goal.id}" type="button">
+                      (goal, index) => `
+                        <button
+                          class="start-goal-item"
+                          data-action="toggle-library-goal"
+                          data-value="${goal.id}"
+                          ${index === 0 ? 'data-guide-id="launch-advance-first-goal"' : ""}
+                          type="button"
+                        >
                           <span class="start-goal-item-checkbox">${renderCheckboxIndicator(
                             (nextOverlay.selectedIds || []).includes(goal.id) ? "checked" : "unchecked"
                           )}</span>
@@ -5563,7 +6249,7 @@ function renderStartGoalModalInner(overlay) {
         <div class="start-goal-footer-period">${escapeHtml(formatLaunchPeriod(nextOverlay.period))}</div>
         <div class="start-goal-footer-actions">
           <button class="modal-button" data-action="close-overlay" type="button">取消</button>
-          <button class="modal-button-primary" data-action="confirm-start-goal" type="button" ${selectedGoals.length === 0 ? "disabled" : ""}>发起</button>
+          <button class="modal-button-primary" data-action="confirm-start-goal" data-guide-id="launch-advance-confirm" type="button" ${selectedGoals.length === 0 ? "disabled" : ""}>发起</button>
         </div>
       </div>
   `;
@@ -5584,6 +6270,7 @@ function syncStartGoalModal() {
   );
 
   modal.innerHTML = renderStartGoalModalInner(state.overlay);
+  flushDropdownChevronAnimations();
   modal.querySelectorAll(".start-goal-card-list").forEach((list, index) => {
     if (list instanceof HTMLElement) {
       list.scrollTop = listScrollTops[index] || 0;
@@ -5593,9 +6280,10 @@ function syncStartGoalModal() {
 }
 
 function renderStartGoalModal(overlay) {
+  const guideStaticClass = isLaunchAdvanceGuideStep(3) || isLaunchAdvanceGuideStep(4) ? " config-prep-guide-static-modal" : "";
   return `
     <div class="backdrop" data-action="close-overlay"></div>
-    <div class="modal start-goal-modal" data-overlay-panel="true">${renderStartGoalModalInner(overlay)}</div>
+    <div class="modal start-goal-modal${guideStaticClass}" data-overlay-panel="true">${renderStartGoalModalInner(overlay)}</div>
   `;
 }
 
@@ -5671,6 +6359,10 @@ function renderOverlay() {
     return `<div class="overlay-root">${renderConfirmModal(state.overlay)}</div>`;
   }
 
+  if (state.overlay.type === "goal-config-transfer") {
+    return `<div class="overlay-root">${renderGoalConfigTransferModal(state.overlay)}</div>`;
+  }
+
   if (state.overlay.type === "start-goal") {
     return `<div class="overlay-root">${renderStartGoalModal(state.overlay)}</div>`;
   }
@@ -5730,18 +6422,49 @@ function buildConfirmOverlay(kind, goalIds, tabKey = getTabKey()) {
   };
 }
 
+function getPendingSelectionStageMeta(goalIds) {
+  const targetIds = new Set(Array.isArray(goalIds) ? goalIds : [goalIds]);
+  const pendingGoals = state.pendingGoals.filter((goal) => targetIds.has(goal.id));
+  const confirmingIds = pendingGoals.filter((goal) => goal.stage === "confirming").map((goal) => goal.id);
+  const ratingIds = pendingGoals.filter((goal) => goal.stage === "rating").map((goal) => goal.id);
+  return {
+    totalCount: pendingGoals.length,
+    confirmingCount: confirmingIds.length,
+    ratingCount: ratingIds.length,
+    confirmingIds,
+    ratingIds,
+  };
+}
+
 function buildMyGoalPendingConfirmOverlay(kind, goalIds) {
   const isReject = kind === "reject";
+  const { totalCount, ratingCount, confirmingCount } = getPendingSelectionStageMeta(goalIds);
+  let description = "";
+
+  if (isReject) {
+    if (ratingCount && confirmingCount) {
+      description = "确认后会同步更新本地 mock 数据：确认中的目标将退回发起方，评分中的目标将退回执行中。";
+    } else if (ratingCount) {
+      description = "确认后会同步更新本地 mock 数据：评分中的目标将退回执行中。";
+    } else {
+      description = "确认后会同步更新本地 mock 数据：确认中的目标将退回发起方。";
+    }
+  } else if (ratingCount && confirmingCount) {
+    description = "确认后会同步更新本地 mock 数据：确认中的目标将进入执行中，评分中的目标将进入已完成。";
+  } else if (ratingCount) {
+    description = "确认后会同步更新本地 mock 数据：评分中的目标将进入已完成。";
+  } else {
+    description = "确认后会同步更新本地 mock 数据：确认中的目标将进入执行中。";
+  }
+
   return {
     type: "confirm",
     scope: "my-goal-pending",
     kind,
     goalIds,
     title: isReject ? "确认批量拒绝" : "确认批量通过",
-    summary: `本次将${isReject ? "拒绝" : "通过"} ${goalIds.length} 个待处理目标。`,
-    description: isReject
-      ? "确认后会同步更新本地 mock 数据：确认中的目标将退回发起方，评分中的目标将退回执行中。"
-      : "确认后会同步更新本地 mock 数据：确认中的目标将进入执行中，评分中的目标将进入已完成。",
+    summary: `本次将${isReject ? "拒绝" : "通过"} ${totalCount || goalIds.length} 个待处理目标。`,
+    description,
     confirmLabel: isReject ? "确认拒绝" : "确认通过",
     confirmButtonClassName: isReject ? "danger-button" : "modal-button-primary",
   };
@@ -5776,6 +6499,35 @@ function buildGoalConfigConfirmOverlay(scope, payload) {
     title: "确认删除分组",
     summary: `本次将删除 ${groupIds.length} 个分组，并转移 ${goals.length} 个目标。`,
     description: "删除后分组及其子分组会从左侧树形结构移除，分组内目标将进入周转箱。",
+  };
+}
+
+function buildGoalConfigTransferOverlay(goalId) {
+  const goal = getGoalConfigGoal(goalId);
+  if (!goal) {
+    return null;
+  }
+
+  const options = getGoalConfigTransferGroupOptions(goal);
+  return {
+    type: "goal-config-transfer",
+    sourceGroupId: goal.groupId,
+    goalIds: [goal.id],
+    targetGroupId: options[0]?.id || null,
+  };
+}
+
+function buildGoalConfigGroupTransferOverlay(groupId) {
+  const options = getGoalConfigTransferGroupOptions({ groupId });
+  if (!options.length) {
+    return null;
+  }
+
+  return {
+    type: "goal-config-transfer",
+    sourceGroupId: groupId,
+    goalIds: [],
+    targetGroupId: options[0]?.id || null,
   };
 }
 
@@ -6069,7 +6821,57 @@ function confirmStartGoal() {
   setActiveSelection([], "ongoing");
   state.openDropdown = null;
   state.openRowMenu = null;
+  if (isLaunchAdvanceGuideStep(4)) {
+    setConfigPrepGuideStep(5);
+  }
   showToast(`已发起 ${instances.length} 个目标实例，进入确认审批`);
+}
+
+function confirmGoalConfigTransfer() {
+  if (!state.overlay || state.overlay.type !== "goal-config-transfer") {
+    return;
+  }
+
+  const selectedGoals = getGoalConfigTransferSelectedGoals(state.overlay);
+  const targetGroup = getGoalConfigGroup(state.overlay.targetGroupId);
+  if (!selectedGoals.length || !targetGroup || targetGroup.kind === "all") {
+    showToast("请选择目标分组");
+    return;
+  }
+
+  if (targetGroup.id === state.overlay.sourceGroupId) {
+    showToast("目标已在当前分组中");
+    return;
+  }
+
+  const selectedIds = new Set(selectedGoals.map((goal) => goal.id));
+  state.goalConfigGoals = state.goalConfigGoals.map((item) =>
+    selectedIds.has(item.id)
+      ? {
+          ...item,
+          groupId: targetGroup.id,
+        }
+      : item
+  );
+
+  if (state.goalConfig.editingDraft?.id && selectedIds.has(state.goalConfig.editingDraft.id)) {
+    state.goalConfig.editingDraft = {
+      ...state.goalConfig.editingDraft,
+      groupId: targetGroup.id,
+    };
+  }
+
+  state.goalConfig.expandedGroupIds = [
+    ...new Set([...state.goalConfig.expandedGroupIds, ...getGoalConfigAncestors(targetGroup.id)]),
+  ];
+  state.overlay = null;
+  state.openDropdown = null;
+  clearGoalConfigPanels();
+  showToast(
+    selectedGoals.length === 1
+      ? `目标已转移到「${getGoalConfigGroupPathLabel(targetGroup.id)}」`
+      : `已将 ${selectedGoals.length} 个目标转移到「${getGoalConfigGroupPathLabel(targetGroup.id)}」`
+  );
 }
 
 function openGoalConfigInfoOverlay(kind, goalId) {
@@ -6296,6 +7098,58 @@ function shouldDeferInputRender(event) {
   );
 }
 
+function getElementHorizontalGap(element) {
+  const styles = window.getComputedStyle(element);
+  const gapValue = styles.columnGap !== "normal" ? styles.columnGap : styles.gap;
+  const gap = Number.parseFloat(gapValue);
+  return Number.isFinite(gap) ? gap : 0;
+}
+
+function measureInlineTextWidth(element) {
+  const range = document.createRange();
+  range.selectNodeContents(element);
+  return range.getBoundingClientRect().width;
+}
+
+function measureActionCellWidth(cell) {
+  const styles = window.getComputedStyle(cell);
+  const paddingLeft = Number.parseFloat(styles.paddingLeft) || 0;
+  const paddingRight = Number.parseFloat(styles.paddingRight) || 0;
+  const inFlowChildren = [...cell.children].filter((child) => {
+    if (!(child instanceof HTMLElement)) {
+      return false;
+    }
+    const childStyles = window.getComputedStyle(child);
+    return childStyles.display !== "none" && childStyles.position !== "absolute";
+  });
+  const contentWidth = inFlowChildren.length
+    ? inFlowChildren.reduce((sum, child) => sum + child.getBoundingClientRect().width, 0) +
+      getElementHorizontalGap(cell) * Math.max(0, inFlowChildren.length - 1)
+    : measureInlineTextWidth(cell);
+
+  return Math.ceil(contentWidth + paddingLeft + paddingRight);
+}
+
+function syncAdaptiveTableActionColumns() {
+  document.querySelectorAll(".table-shell").forEach((shell) => {
+    if (!(shell instanceof HTMLElement)) {
+      return;
+    }
+
+    const actionCells = [...shell.querySelectorAll(".header-actions, .cell-actions")].filter(
+      (cell) => cell instanceof HTMLElement
+    );
+
+    if (!actionCells.length) {
+      shell.style.removeProperty("--table-actions-column-width");
+      return;
+    }
+
+    const maxWidth = actionCells.reduce((width, cell) => Math.max(width, measureActionCellWidth(cell)), 0);
+    shell.style.setProperty("--table-actions-column-width", `${maxWidth}px`);
+  });
+}
+
 function render(preserveFocus) {
   syncActivePageAccess();
   const ongoingIds = new Set(state.goals.map((goal) => goal.id));
@@ -6322,9 +7176,18 @@ function render(preserveFocus) {
     ${renderConfigPrepGuideShell()}
   `;
 
+  flushDropdownChevronAnimations();
+
   persistState();
   syncToast();
   scheduleConfigPrepGuideSync();
+
+  if (maybeStartAutomaticGuide()) {
+    render();
+    return;
+  }
+
+  syncAdaptiveTableActionColumns();
 
   if (preserveFocus && preserveFocus.selector) {
     const input = document.querySelector(preserveFocus.selector);
@@ -6385,8 +7248,11 @@ function onAction(action, value, target) {
     case "start-config-prep-guide":
       startConfigPrepGuide();
       break;
+    case "start-launch-advance-guide":
+      startLaunchAdvanceGuide();
+      break;
     case "close-config-prep-guide":
-      closeConfigPrepGuide();
+      closeConfigPrepGuide(isConfigPrepGuideLastStep());
       break;
     case "toggle-sidebar-group": {
       if (state.sidebarCollapsed) {
@@ -6400,12 +7266,15 @@ function onAction(action, value, target) {
     case "navigate-page":
       state.activePage = normalizeGoalPage(value);
       resetGoalPageEntryTab(state.activePage);
+      refreshCurrentPageTableState(state.activePage);
       if (getSidebarGroupKeyByPage(state.activePage)) {
         setSidebarGroupExpanded(getSidebarGroupKeyByPage(state.activePage), true);
       }
       closeTransientPanels();
       state.overlay = null;
       if (isConfigPrepGuideStep(1) && state.activePage === "goal-config") {
+        advanceConfigPrepGuide(2);
+      } else if (isLaunchAdvanceGuideStep(1) && state.activePage === "goal-management") {
         advanceConfigPrepGuide(2);
       }
       break;
@@ -6418,6 +7287,7 @@ function onAction(action, value, target) {
       }
       state.currentUserKey = nextUserKey;
       syncActivePageAccess();
+      refreshCurrentPageTableState(state.activePage);
       showToast(`已切换到 ${getCurrentUserProfile().label}`);
       break;
     }
@@ -6428,9 +7298,13 @@ function onAction(action, value, target) {
       state.overlay = buildResetDemoConfirmOverlay(1);
       closeTransientPanels();
       break;
-    case "toggle-dropdown":
-      state.openDropdown = state.openDropdown === value ? null : value;
+    case "toggle-dropdown": {
+      const shouldCompleteGuideUsagePrompt = isGuideMenuGuideStep(1) && value === "help-menu";
+      toggleDropdownOpenState(value);
       state.openRowMenu = null;
+      if (shouldCompleteGuideUsagePrompt) {
+        closeConfigPrepGuide(true);
+      }
       if (
         state.overlay?.type === "start-goal" &&
         (value === "start-goal-period" || value === "start-goal-group")
@@ -6438,18 +7312,21 @@ function onAction(action, value, target) {
         syncStartGoalModal();
         return;
       }
+    }
       break;
     case "toggle-my-goal-dropdown":
-      state.openDropdown = state.openDropdown === value ? null : value;
+      toggleDropdownOpenState(value);
       state.openRowMenu = null;
       break;
     case "set-my-goal-tab":
       state.myGoals.activeTab = value;
+      refreshCurrentPageTableState("my-goals");
       closeTransientPanels();
       state.overlay = null;
       break;
     case "set-goal-config-tab":
       state.goalConfig.activeTab = value === "process" ? "process" : "library";
+      refreshCurrentPageTableState("goal-config");
       closeTransientPanels();
       clearGoalConfigEditing();
       cancelGoalConfigProcessEditing();
@@ -6475,9 +7352,16 @@ function onAction(action, value, target) {
       }
       break;
     case "toggle-goal-config-dropdown":
-      state.openDropdown = state.openDropdown === value ? null : value;
+      toggleDropdownOpenState(value);
       clearGoalConfigPanels();
       state.openRowMenu = null;
+      if (
+        state.overlay?.type === "goal-config-transfer" &&
+        (value === "goal-config-transfer-goal" || value === "goal-config-transfer-group")
+      ) {
+        syncGoalConfigTransferModal();
+        return;
+      }
       break;
     case "set-goal-config-type-filter":
       state.goalConfig.type = GOAL_CONFIG_TYPE_OPTIONS.some((option) => option.key === value) ? value : "all";
@@ -6514,23 +7398,11 @@ function onAction(action, value, target) {
       break;
     }
     case "goal-config-import": {
-      const draft = createGoalConfigDraft({
+      const draft = createGoalConfigTestingDraft({
         id: `goal-config-import-${Date.now()}`,
         groupId: resolveGoalConfigTargetGroupId(),
-        title: "导入的经营目标模板",
-        type: "manual",
-        alignedGoal: "",
-        executors: ["yuyaobo", "zhangxudong"],
-        flow: getDefaultGoalConfigFlow(),
         createdAt: new Date().toISOString(),
-        isNew: true,
-        krs: [
-          createGoalConfigKr("manual", 0),
-          createGoalConfigKr("manual", 1),
-        ],
       });
-      draft.krs[0].title = "补齐业务目标描述";
-      draft.krs[1].title = "完成人工评分标准";
       state.goalConfig.editingGoalId = draft.id;
       state.goalConfig.editingDraft = draft;
       clearGoalConfigPanels();
@@ -6539,22 +7411,11 @@ function onAction(action, value, target) {
       break;
     }
     case "goal-config-ai-template": {
-      const draft = createGoalConfigDraft({
+      const draft = createGoalConfigTestingDraft({
         id: `goal-config-ai-${Date.now()}`,
         groupId: resolveGoalConfigTargetGroupId(),
-        title: "AI 推荐的经营目标模板",
-        type: "weighted",
-        alignedGoal: "更好的经营企业",
-        executors: ["liukan", "wuxuanyu"],
-        flow: getGoalConfigFlowOptions()[1] || getDefaultGoalConfigFlow(),
         createdAt: new Date().toISOString(),
-        isNew: true,
-        krs: [createGoalConfigKr("weighted", 0), createGoalConfigKr("weighted", 1)],
       });
-      draft.krs[0].title = "沉淀经营会前材料模板";
-      draft.krs[0].weight = "40%";
-      draft.krs[1].title = "推动核心团队完成试跑";
-      draft.krs[1].weight = "60%";
       state.goalConfig.editingGoalId = draft.id;
       state.goalConfig.editingDraft = draft;
       clearGoalConfigPanels();
@@ -6568,7 +7429,7 @@ function onAction(action, value, target) {
       break;
     case "goal-config-save":
       if (saveGoalConfigDraft() && isConfigPrepGuideStep(11)) {
-        closeConfigPrepGuide();
+        closeConfigPrepGuide(true);
       }
       break;
     case "goal-config-cancel":
@@ -6673,9 +7534,58 @@ function onAction(action, value, target) {
       }
       break;
     }
+    case "goal-config-transfer": {
+      const overlay = buildGoalConfigTransferOverlay(value);
+      clearGoalConfigPanels();
+      state.openDropdown = null;
+      if (!overlay || !overlay.targetGroupId) {
+        showToast("暂无可转移的分组");
+        break;
+      }
+      state.overlay = overlay;
+      break;
+    }
+    case "goal-config-transfer-group-goal": {
+      const overlay = buildGoalConfigGroupTransferOverlay(value);
+      clearGoalConfigPanels();
+      state.openDropdown = null;
+      if (!overlay || !overlay.targetGroupId) {
+        showToast("当前分组暂无可转移目标");
+        break;
+      }
+      state.overlay = overlay;
+      break;
+    }
     case "goal-config-delete":
       state.overlay = buildGoalConfigConfirmOverlay("goal", { goalIds: [value] });
       clearGoalConfigPanels();
+      break;
+    case "toggle-goal-config-transfer-goal":
+      if (state.overlay && state.overlay.type === "goal-config-transfer") {
+        const nextGoalIds = new Set(Array.isArray(state.overlay.goalIds) ? state.overlay.goalIds : []);
+        if (nextGoalIds.has(value)) {
+          nextGoalIds.delete(value);
+        } else {
+          nextGoalIds.add(value);
+        }
+        state.overlay = {
+          ...state.overlay,
+          goalIds: [...nextGoalIds],
+        };
+        syncGoalConfigTransferModal();
+        return;
+      }
+      break;
+    case "set-goal-config-transfer-group":
+      if (state.overlay && state.overlay.type === "goal-config-transfer") {
+        state.overlay = { ...state.overlay, targetGroupId: value };
+        state.openDropdown = null;
+        syncGoalConfigTransferModal();
+        return;
+      }
+      break;
+    case "confirm-goal-config-transfer":
+      confirmGoalConfigTransfer();
       break;
     case "goal-config-add-group":
       createGoalConfigGroup(null);
@@ -6900,7 +7810,17 @@ function onAction(action, value, target) {
     }
     case "approve-my-goal-batch":
       if (selectedPendingIds.length) {
-        state.overlay = buildMyGoalPendingConfirmOverlay("approve", [...selectedPendingIds]);
+        const { ratingCount, confirmingCount, confirmingIds } = getPendingSelectionStageMeta(selectedPendingIds);
+        if (ratingCount && confirmingCount) {
+          applyPendingApproval(
+            confirmingIds,
+            `所选记录中有 ${ratingCount} 条评分中目标仍需填写内容，未执行批量通过；其他 ${confirmingCount} 条审批已通过。`
+          );
+        } else if (ratingCount) {
+          showToast(`所选 ${ratingCount} 条记录均处于评分中，仍有内容待填写，暂不支持批量通过。`);
+        } else {
+          state.overlay = buildMyGoalPendingConfirmOverlay("approve", [...selectedPendingIds]);
+        }
       }
       break;
     case "reject-my-goal-batch":
@@ -6937,6 +7857,9 @@ function onAction(action, value, target) {
     case "set-stage":
       state.filters.ongoing.stage = value;
       resetListState("ongoing");
+      if (isLaunchAdvanceGuideStep(5) && value === "executing") {
+        advanceConfigPrepGuide(6);
+      }
       break;
     case "set-type":
       state.filters.completed.type = value;
@@ -6978,14 +7901,21 @@ function onAction(action, value, target) {
       state.overlay = buildConfirmOverlay("delete", [value], tabKey);
       break;
     case "advance-all": {
+      const shouldCompleteLaunchGuide = isLaunchAdvanceGuideStep(6);
       const advanceState = getAdvanceActionState(filteredGoals, tabKey);
       if (!advanceState.isExecutingStage) {
         state.filters.ongoing.stage = "executing";
         resetListState("ongoing");
+        if (shouldCompleteLaunchGuide) {
+          closeConfigPrepGuide(true);
+        }
         break;
       }
       if (!advanceState.hasGoals) {
         showToast("当前没有可推进评分的目标");
+        if (shouldCompleteLaunchGuide) {
+          closeConfigPrepGuide(true);
+        }
         break;
       }
       if (advanceState.canAdvance) {
@@ -6994,6 +7924,9 @@ function onAction(action, value, target) {
           filteredGoals.filter((goal) => goal.stage === "executing").map((goal) => goal.id),
           tabKey
         );
+      }
+      if (shouldCompleteLaunchGuide) {
+        closeConfigPrepGuide(true);
       }
       break;
     }
@@ -7023,6 +7956,9 @@ function onAction(action, value, target) {
         groupId: "all",
       });
       state.openDropdown = null;
+      if (isLaunchAdvanceGuideStep(2)) {
+        advanceConfigPrepGuide(3);
+      }
       break;
     case "set-start-goal-period":
       if (state.overlay && state.overlay.type === "start-goal") {
@@ -7060,12 +7996,18 @@ function onAction(action, value, target) {
     case "toggle-library-goal":
       if (state.overlay && state.overlay.type === "start-goal") {
         const next = new Set(state.overlay.selectedIds || []);
+        const willSelect = !next.has(value);
         if (next.has(value)) {
           next.delete(value);
         } else {
           next.add(value);
         }
         state.overlay = { ...state.overlay, selectedIds: [...next] };
+        if (isLaunchAdvanceGuideStep(3) && willSelect) {
+          advanceConfigPrepGuide(4);
+          render();
+          return;
+        }
         syncStartGoalModal();
         return;
       }
@@ -7098,6 +8040,7 @@ function onAction(action, value, target) {
       break;
     case "set-tab":
       state.activeTab = value;
+      refreshCurrentPageTableState("goal-management");
       closeTransientPanels();
       state.overlay = null;
       break;
@@ -7105,6 +8048,10 @@ function onAction(action, value, target) {
       if (isConfigPrepGuideStep(4) && state.overlay?.type === "goal-config-process-create") {
         setConfigPrepGuideStep(3);
       }
+      if ((isLaunchAdvanceGuideStep(3) || isLaunchAdvanceGuideStep(4)) && state.overlay?.type === "start-goal") {
+        setConfigPrepGuideStep(2);
+      }
+      closeTransientPanels();
       state.overlay = null;
       break;
     case "collapse-nav":
@@ -7121,7 +8068,9 @@ document.addEventListener("click", (event) => {
   const immediateActionTarget = event.target.closest("[data-action]");
   if (
     immediateActionTarget &&
-    ["start-config-prep-guide", "close-config-prep-guide"].includes(immediateActionTarget.dataset.action)
+    ["start-config-prep-guide", "start-launch-advance-guide", "close-config-prep-guide"].includes(
+      immediateActionTarget.dataset.action
+    )
   ) {
     onAction(immediateActionTarget.dataset.action, immediateActionTarget.dataset.value, immediateActionTarget);
     return;
@@ -7139,7 +8088,11 @@ document.addEventListener("click", (event) => {
   }
 
   if (!event.target.closest(".dropdown-panel") && !event.target.closest(".control") && state.openDropdown) {
-    state.openDropdown = null;
+    setDropdownOpenState(null);
+    if (state.overlay?.type === "goal-config-transfer") {
+      syncGoalConfigTransferModal();
+      return;
+    }
     render();
     return;
   }
@@ -7316,7 +8269,7 @@ document.addEventListener("keydown", (event) => {
       render();
     }
   }
-  if (event.target.dataset.field === "goal-config-create-process-name" && state.overlay?.type === "goal-config-process-create") {
+    if (event.target.dataset.field === "goal-config-create-process-name" && state.overlay?.type === "goal-config-process-create") {
     if (event.key === "Enter" && !event.isComposing) {
       event.preventDefault();
       onAction("confirm-goal-config-process-create", "");
@@ -7326,6 +8279,7 @@ document.addEventListener("keydown", (event) => {
       if (isConfigPrepGuideStep(4)) {
         setConfigPrepGuideStep(3);
       }
+      closeTransientPanels();
       state.overlay = null;
       render();
     }
@@ -7392,6 +8346,10 @@ document.addEventListener("keydown", (event) => {
       if (isConfigPrepGuideStep(4) && state.overlay.type === "goal-config-process-create") {
         setConfigPrepGuideStep(3);
       }
+      if ((isLaunchAdvanceGuideStep(3) || isLaunchAdvanceGuideStep(4)) && state.overlay.type === "start-goal") {
+        setConfigPrepGuideStep(2);
+      }
+      closeTransientPanels();
       state.overlay = null;
       render();
       return;
