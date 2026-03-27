@@ -118,6 +118,128 @@ const GOAL_CONFIG_PROCESS_GUIDE_STEPS = [
   },
 ];
 
+const CONFIG_PREP_GUIDE_STEPS = [
+  {
+    step: 1,
+    title: '侧边导航“目标配置”',
+    message: "从这里开始配置你的目标体系",
+    hint: "点击进入目标配置",
+    placement: "right",
+    padding: 10,
+    radius: 12,
+    selectors: ['[data-guide-id="config-prep-nav-goal-config"]'],
+  },
+  {
+    step: 2,
+    title: 'Tab 栏“流程库”',
+    message: "先创建一个审批流程",
+    hint: "点击切换到流程库",
+    placement: "bottom",
+    padding: 10,
+    radius: 12,
+    selectors: ['[data-guide-id="config-prep-tab-process"]'],
+  },
+  {
+    step: 3,
+    title: '“创建流程”按钮',
+    message: "点击创建你的第一个流程",
+    hint: "点击打开命名弹窗",
+    placement: "bottom",
+    padding: 12,
+    radius: 14,
+    selectors: ['[data-guide-id="config-prep-create-process"]'],
+  },
+  {
+    step: 4,
+    title: "命名弹窗",
+    message: "输入流程名称，如“月度考核流程”",
+    hint: "输入名称并确认",
+    placement: "bottom",
+    padding: 12,
+    radius: 18,
+    selectors: ['[data-guide-id="config-prep-process-modal"]'],
+  },
+  {
+    step: 5,
+    title: 'Tab 栏“目标库”',
+    message: "流程创建完成，接下来创建目标",
+    hint: "点击切换到目标库",
+    placement: "bottom",
+    padding: 10,
+    radius: 12,
+    selectors: ['[data-guide-id="config-prep-tab-library"]'],
+  },
+  {
+    step: 6,
+    title: '“新增分组”按钮',
+    message: "先建一个分组来归类你的目标",
+    hint: "点击新增分组",
+    placement: "right",
+    padding: 12,
+    radius: 14,
+    selectors: ['[data-guide-id="config-prep-add-group"]'],
+  },
+  {
+    step: 7,
+    title: "分组名称输入框",
+    message: "给分组起个名字，回车确认",
+    hint: "输入名称并回车",
+    placement: "right",
+    padding: 12,
+    radius: 14,
+    selectors: ['[data-guide-id="config-prep-group-name"]'],
+  },
+  {
+    step: 8,
+    title: '“创建目标”按钮',
+    message: "在这个分组下创建第一个目标",
+    hint: "点击创建目标",
+    placement: "left",
+    padding: 12,
+    radius: 16,
+    selectors: ['[data-guide-id="config-prep-create-goal"]'],
+  },
+  {
+    step: 9,
+    title: "目标名称与 KR 区域",
+    message: "输入目标名称、三值和权重，完成后点空白处进入下一步",
+    hint: "填完后脱离聚焦",
+    placement: "top",
+    padding: 12,
+    radius: 16,
+    selectors: [
+      '[data-guide-id="config-prep-goal-title"]',
+      '[data-guide-id="config-prep-first-kr"]',
+    ],
+  },
+  {
+    step: 10,
+    title: "执行人选择器",
+    message: "选择谁来执行这个目标",
+    hint: "点击并选择人员",
+    placement: "right",
+    padding: 14,
+    radius: 18,
+    selectors: () => {
+      const selectors = ['[data-guide-id="config-prep-executor-row"]'];
+      if (state.openDropdown === "goal-config-executors") {
+        selectors.push(".goal-config-executor-menu");
+      }
+      return selectors;
+    },
+  },
+  {
+    step: 11,
+    title: '“保存”按钮',
+    message: "配置完成，保存目标",
+    hint: "点击保存",
+    placement: "top",
+    padding: 12,
+    radius: 16,
+    selectors: ['[data-guide-id="config-prep-save-goal"]'],
+  },
+];
+
 const GOAL_MANAGEMENT_GUIDE_TEXT =
   "若目标执行结束，可以按步骤发起评分： 选择考核周期 → 选择执行阶段 → 点击“推进评分”";
 
@@ -290,6 +412,7 @@ const USER_PROFILE_BY_KEY = Object.fromEntries(
 );
 const app = document.getElementById("app");
 let toastTimer = null;
+let configPrepGuideFrame = 0;
 const goalConfigProcessGuideImageCache = [];
 
 const clone = (value) => JSON.parse(JSON.stringify(value));
@@ -453,6 +576,26 @@ function syncSidebarGroupExpandedInDom(groupKey, expanded) {
   }
 }
 
+function syncSidebarGroupPopoversInDom() {
+  document.querySelectorAll(".sidebar-goal-popover").forEach((popover) => {
+    popover.remove();
+  });
+
+  if (!state.sidebarCollapsed) {
+    return;
+  }
+
+  getVisibleSidebarGroups().forEach((group) => {
+    const groupRoot = document.querySelector(`.sidebar-group-${group.key}`);
+    const wrap = groupRoot?.querySelector(".sidebar-goal-wrap");
+    if (!wrap) {
+      return;
+    }
+
+    wrap.insertAdjacentHTML("beforeend", renderSidebarGroupPopover(group));
+  });
+}
+
 function animateSidebarGroupToggle(groupKey) {
   const sidebar = document.querySelector(".sidebar");
   const previousExpandedGroups = new Map(
@@ -489,6 +632,23 @@ function renderPendingGoalBadge(className = "") {
   }
   const classes = ["sidebar-pending-badge", className].filter(Boolean).join(" ");
   return `<span class="${classes}" aria-hidden="true">${escapeHtml(count)}</span>`;
+}
+
+function renderSidebarGroupPopover(group) {
+  return `
+    <div class="dropdown-panel sidebar-goal-popover">
+      <div class="sidebar-goal-popover-title">${group.label}</div>
+      ${group.items
+        .map(
+          (item) => `
+            <button class="dropdown-option ${state.activePage === item.pageKey ? "is-active" : ""}" data-action="navigate-page" data-value="${item.pageKey}" type="button">
+              ${item.label}
+            </button>
+          `
+        )
+        .join("")}
+    </div>
+  `;
 }
 
 function resetGoalPageEntryTab(pageKey) {
@@ -625,6 +785,7 @@ function makeDefaultState() {
     openDropdown: null,
     openRowMenu: null,
     overlay: null,
+    configPrepGuide: null,
     toast: "",
   };
 }
@@ -985,6 +1146,7 @@ function normalizeState(nextState) {
     openDropdown: null,
     openRowMenu: null,
     overlay: null,
+    configPrepGuide: null,
     toast: "",
   };
 }
@@ -1612,15 +1774,7 @@ function createGoalConfigKr(type = "auto", index = 0) {
 }
 
 function createGoalConfigInitialKrs(type = "auto") {
-  const first = createGoalConfigKr(type, 0);
-  const second = createGoalConfigKr(type, 1);
-
-  if (type === "auto" || type === "weighted") {
-    first.weight = "50%";
-    second.weight = "50%";
-  }
-
-  return [first, second];
+  return [createGoalConfigKr(type, 0)];
 }
 
 function sanitizeGoalConfigMetricValue(value) {
@@ -1920,6 +2074,9 @@ function saveGoalConfigGroupName(groupId) {
     showToast("分组名称已更新");
   }
   cancelGoalConfigGroupEditing();
+  if (isConfigPrepGuideStep(7)) {
+    advanceConfigPrepGuide(8);
+  }
   return true;
 }
 
@@ -2015,6 +2172,385 @@ function completeGoalConfigProcessGuide() {
 
   state.overlay = null;
   openGoalConfigProcessEditor();
+}
+
+function getConfigPrepGuideStep(step = state.configPrepGuide && state.configPrepGuide.step) {
+  return CONFIG_PREP_GUIDE_STEPS.find((item) => item.step === Number(step)) || null;
+}
+
+function isConfigPrepGuideStep(step) {
+  return !!state.configPrepGuide && Number(state.configPrepGuide.step) === Number(step);
+}
+
+function startConfigPrepGuide() {
+  closeTransientPanels();
+  clearGoalConfigEditing();
+  state.overlay = null;
+  state.sidebarCollapsed = false;
+  setSidebarGroupExpanded("goal", true);
+  state.goalConfig.treeCollapsed = false;
+  state.configPrepGuide = { step: 1 };
+}
+
+function closeConfigPrepGuide(showCompletedToast = false) {
+  state.configPrepGuide = null;
+  if (showCompletedToast) {
+    showToast("配置准备引导已完成");
+  }
+}
+
+function setConfigPrepGuideStep(step) {
+  if (!state.configPrepGuide) {
+    return;
+  }
+
+  if (step > CONFIG_PREP_GUIDE_STEPS.length) {
+    closeConfigPrepGuide(true);
+    return;
+  }
+
+  if (step <= 1) {
+    state.sidebarCollapsed = false;
+    setSidebarGroupExpanded("goal", true);
+  }
+
+  if (step >= 6) {
+    state.goalConfig.treeCollapsed = false;
+  }
+
+  state.configPrepGuide = { step };
+}
+
+function advanceConfigPrepGuide(nextStep) {
+  if (!state.configPrepGuide) {
+    return;
+  }
+  setConfigPrepGuideStep(nextStep);
+}
+
+function getConfigPrepGuideFirstKrId() {
+  const draft = state.goalConfig.editingDraft;
+  return draft && Array.isArray(draft.krs) && draft.krs[0] ? draft.krs[0].id : "";
+}
+
+function getConfigPrepGuideInputValue(field, krId = "") {
+  const krSelector = krId ? `[data-kr-id="${krId}"]` : "";
+  const input = document.querySelector(`[data-field="${field}"]${krSelector}`);
+  return input instanceof HTMLInputElement ? input.value.trim() : "";
+}
+
+function isConfigPrepGuideGoalDraftReady() {
+  const firstKrId = getConfigPrepGuideFirstKrId();
+  if (!firstKrId) {
+    return false;
+  }
+
+  return [
+    getConfigPrepGuideInputValue("goal-config-title"),
+    getConfigPrepGuideInputValue("goal-config-kr-threshold", firstKrId),
+    getConfigPrepGuideInputValue("goal-config-kr-passing", firstKrId),
+    getConfigPrepGuideInputValue("goal-config-kr-challenge", firstKrId),
+    getConfigPrepGuideInputValue("goal-config-kr-weight", firstKrId),
+  ].every(Boolean);
+}
+
+function isConfigPrepGuideDraftFocusField(element) {
+  if (!(element instanceof HTMLInputElement)) {
+    return false;
+  }
+
+  const firstKrId = getConfigPrepGuideFirstKrId();
+  if (!firstKrId) {
+    return false;
+  }
+
+  if (element.dataset.field === "goal-config-title") {
+    return true;
+  }
+
+  return (
+    element.dataset.krId === firstKrId &&
+    [
+      "goal-config-kr-threshold",
+      "goal-config-kr-passing",
+      "goal-config-kr-challenge",
+      "goal-config-kr-weight",
+    ].includes(element.dataset.field || "")
+  );
+}
+
+function resolveConfigPrepGuideSelectors(step) {
+  if (!step) {
+    return [];
+  }
+
+  const selectors = typeof step.selectors === "function" ? step.selectors() : step.selectors;
+  return (Array.isArray(selectors) ? selectors : [selectors]).filter(Boolean);
+}
+
+function isVisibleGuideTarget(element) {
+  if (!(element instanceof HTMLElement)) {
+    return false;
+  }
+
+  const rect = element.getBoundingClientRect();
+  if (rect.width <= 0 || rect.height <= 0) {
+    return false;
+  }
+
+  const style = window.getComputedStyle(element);
+  return style.display !== "none" && style.visibility !== "hidden";
+}
+
+function getConfigPrepGuideTargetElements(step) {
+  return [...new Set(resolveConfigPrepGuideSelectors(step))]
+    .map((selector) => document.querySelector(selector))
+    .filter((element) => isVisibleGuideTarget(element));
+}
+
+function ensureConfigPrepGuideTargetVisible(elements) {
+  const primary = elements[0];
+  if (!(primary instanceof HTMLElement)) {
+    return;
+  }
+
+  const rect = primary.getBoundingClientRect();
+  const margin = 32;
+  const isOutsideViewport =
+    rect.top < margin ||
+    rect.bottom > window.innerHeight - margin ||
+    rect.left < margin ||
+    rect.right > window.innerWidth - margin;
+
+  if (isOutsideViewport) {
+    primary.scrollIntoView({
+      block: "nearest",
+      inline: "nearest",
+    });
+  }
+}
+
+function getConfigPrepGuideTargetRect(step, elements) {
+  if (!elements.length) {
+    return null;
+  }
+
+  const padding = Number(step.padding) || 10;
+  let top = Number.POSITIVE_INFINITY;
+  let left = Number.POSITIVE_INFINITY;
+  let right = 0;
+  let bottom = 0;
+
+  elements.forEach((element) => {
+    const rect = element.getBoundingClientRect();
+    top = Math.min(top, rect.top);
+    left = Math.min(left, rect.left);
+    right = Math.max(right, rect.right);
+    bottom = Math.max(bottom, rect.bottom);
+  });
+
+  if (!Number.isFinite(top) || !Number.isFinite(left)) {
+    return null;
+  }
+
+  const paddedTop = Math.round(Math.max(8, top - padding));
+  const paddedLeft = Math.round(Math.max(8, left - padding));
+  const paddedRight = Math.round(Math.min(window.innerWidth - 8, right + padding));
+  const paddedBottom = Math.round(Math.min(window.innerHeight - 8, bottom + padding));
+
+  return {
+    top: paddedTop,
+    left: paddedLeft,
+    right: paddedRight,
+    bottom: paddedBottom,
+    width: Math.max(0, paddedRight - paddedLeft),
+    height: Math.max(0, paddedBottom - paddedTop),
+    radius: (Number(step.radius) || 16) + 6,
+  };
+}
+
+function renderConfigPrepGuideBubble(step) {
+  return `
+    <div class="config-prep-guide-bubble" data-config-prep-guide-bubble data-placement="${escapeHtml(step.placement || "right")}">
+      <button class="config-prep-guide-close" data-action="close-config-prep-guide" type="button" aria-label="结束引导">结束引导</button>
+      <div class="config-prep-guide-bubble-badge">配置准备 ${step.step}/${CONFIG_PREP_GUIDE_STEPS.length}</div>
+      <div class="config-prep-guide-bubble-title">${escapeHtml(step.title)}</div>
+      <div class="config-prep-guide-bubble-copy">${escapeHtml(step.message)}</div>
+      <div class="config-prep-guide-bubble-hint">${escapeHtml(step.hint)}</div>
+      <div class="config-prep-guide-bubble-arrow" aria-hidden="true"></div>
+    </div>
+  `;
+}
+
+function buildConfigPrepGuideRoundedRectPath(rect) {
+  const radius = Math.max(0, Math.min(rect.radius, rect.width / 2, rect.height / 2));
+
+  if (!radius) {
+    return `M${rect.left} ${rect.top}H${rect.right}V${rect.bottom}H${rect.left}Z`;
+  }
+
+  return [
+    `M${rect.left + radius} ${rect.top}`,
+    `H${rect.right - radius}`,
+    `A${radius} ${radius} 0 0 1 ${rect.right} ${rect.top + radius}`,
+    `V${rect.bottom - radius}`,
+    `A${radius} ${radius} 0 0 1 ${rect.right - radius} ${rect.bottom}`,
+    `H${rect.left + radius}`,
+    `A${radius} ${radius} 0 0 1 ${rect.left} ${rect.bottom - radius}`,
+    `V${rect.top + radius}`,
+    `A${radius} ${radius} 0 0 1 ${rect.left + radius} ${rect.top}`,
+    "Z",
+  ].join(" ");
+}
+
+function renderConfigPrepGuideLayer(step, rect) {
+  const viewportWidth = window.innerWidth;
+  const viewportHeight = window.innerHeight;
+  const outerPath = `M0 0H${viewportWidth}V${viewportHeight}H0Z`;
+  const cutoutPath = buildConfigPrepGuideRoundedRectPath(rect);
+
+  return `
+    <svg
+      class="config-prep-guide-mask"
+      aria-hidden="true"
+      viewBox="0 0 ${viewportWidth} ${viewportHeight}"
+      preserveAspectRatio="none"
+    >
+      <path class="config-prep-guide-mask-shape" d="${outerPath} ${cutoutPath}" fill-rule="evenodd"></path>
+    </svg>
+    <div
+      class="config-prep-guide-spotlight"
+      style="top:${rect.top}px;left:${rect.left}px;width:${rect.width}px;height:${rect.height}px;border-radius:${rect.radius}px;"
+      aria-hidden="true"
+    ></div>
+    ${renderConfigPrepGuideBubble(step)}
+  `;
+}
+
+function computeConfigPrepGuideBubblePosition(step, rect, bubble) {
+  const bubbleWidth = bubble.offsetWidth;
+  const bubbleHeight = bubble.offsetHeight;
+  const preferred = step.placement || "right";
+  const placements = [...new Set([preferred, "right", "left", "bottom", "top"])];
+  const gap = 18;
+  const margin = 16;
+
+  const buildPosition = (placement) => {
+    switch (placement) {
+      case "left":
+        return {
+          placement,
+          top: rect.top + rect.height / 2 - bubbleHeight / 2,
+          left: rect.left - bubbleWidth - gap,
+        };
+      case "bottom":
+        return {
+          placement,
+          top: rect.bottom + gap,
+          left: rect.left + rect.width / 2 - bubbleWidth / 2,
+        };
+      case "top":
+        return {
+          placement,
+          top: rect.top - bubbleHeight - gap,
+          left: rect.left + rect.width / 2 - bubbleWidth / 2,
+        };
+      case "right":
+      default:
+        return {
+          placement: "right",
+          top: rect.top + rect.height / 2 - bubbleHeight / 2,
+          left: rect.right + gap,
+        };
+    }
+  };
+
+  const fitsViewport = (position) =>
+    position.top >= margin &&
+    position.left >= margin &&
+    position.top + bubbleHeight <= window.innerHeight - margin &&
+    position.left + bubbleWidth <= window.innerWidth - margin;
+
+  const clampPosition = (position) => ({
+    placement: position.placement,
+    top: Math.min(Math.max(position.top, margin), Math.max(margin, window.innerHeight - bubbleHeight - margin)),
+    left: Math.min(Math.max(position.left, margin), Math.max(margin, window.innerWidth - bubbleWidth - margin)),
+  });
+
+  const fittingPosition = placements.map(buildPosition).find((position) => fitsViewport(position));
+  return clampPosition(fittingPosition || buildPosition(preferred));
+}
+
+function syncConfigPrepGuide() {
+  const layer = document.querySelector("[data-config-prep-guide-layer]");
+  if (!(layer instanceof HTMLElement)) {
+    return;
+  }
+
+  if (!state.configPrepGuide) {
+    layer.innerHTML = "";
+    return;
+  }
+
+  const step = getConfigPrepGuideStep();
+  if (!step) {
+    layer.innerHTML = "";
+    return;
+  }
+
+  let elements = getConfigPrepGuideTargetElements(step);
+  if (elements.length) {
+    ensureConfigPrepGuideTargetVisible(elements);
+    elements = getConfigPrepGuideTargetElements(step);
+  }
+
+  const rect = getConfigPrepGuideTargetRect(step, elements);
+  if (!rect) {
+    layer.innerHTML = `
+      <div class="config-prep-guide-fallback">
+        ${renderConfigPrepGuideBubble(step)}
+      </div>
+    `;
+    return;
+  }
+
+  layer.innerHTML = renderConfigPrepGuideLayer(step, rect);
+  const bubble = layer.querySelector("[data-config-prep-guide-bubble]");
+  if (!(bubble instanceof HTMLElement)) {
+    return;
+  }
+
+  const position = computeConfigPrepGuideBubblePosition(step, rect, bubble);
+  bubble.dataset.placement = position.placement;
+  bubble.style.top = `${position.top}px`;
+  bubble.style.left = `${position.left}px`;
+}
+
+function scheduleConfigPrepGuideSync() {
+  window.cancelAnimationFrame(configPrepGuideFrame);
+  configPrepGuideFrame = window.requestAnimationFrame(() => {
+    configPrepGuideFrame = 0;
+    syncConfigPrepGuide();
+  });
+}
+
+function shouldSyncConfigPrepGuideAfterMotion(target) {
+  if (!state.configPrepGuide || !(target instanceof HTMLElement)) {
+    return false;
+  }
+
+  if (target.closest(".config-prep-guide-root")) {
+    return false;
+  }
+
+  const step = getConfigPrepGuideStep();
+  if (!step) {
+    return false;
+  }
+
+  return getConfigPrepGuideTargetElements(step).some(
+    (element) => element === target || element.contains(target) || target.contains(element)
+  );
 }
 
 function buildGoalConfigProcessConfirmOverlay(processIds) {
@@ -2429,6 +2965,18 @@ function renderArrow(direction, className = "") {
   return `<span class="ui-arrow ui-arrow-${direction} ${className}" aria-hidden="true"></span>`;
 }
 
+function renderControlArrow(className = "") {
+  return `<span class="${`control-arrow ${className}`.trim()}" aria-hidden="true"></span>`;
+}
+
+function isDropdownOpen(dropdownKey) {
+  return state.openDropdown === dropdownKey;
+}
+
+function dropdownTriggerClass(baseClass, dropdownKey) {
+  return `${baseClass}${isDropdownOpen(dropdownKey) ? " is-open" : ""}`;
+}
+
 function renderBreadcrumbSeparator() {
   return `
     <span class="breadcrumb-separator" aria-hidden="true">
@@ -2588,31 +3136,20 @@ function renderSidebar() {
           ${collapsedBadge}
           <span class="menu-expand">${renderArrow(expanded ? "down" : "right", "ui-arrow-sm")}</span>
         </button>
-        ${
-          isSidebarCollapsed
-            ? `
-              <div class="dropdown-panel sidebar-goal-popover">
-                <div class="sidebar-goal-popover-title">${group.label}</div>
-                ${group.items
-                  .map(
-                    (item) => `
-                      <button class="dropdown-option ${state.activePage === item.pageKey ? "is-active" : ""}" data-action="navigate-page" data-value="${item.pageKey}" type="button">
-                        ${item.label}
-                      </button>
-                    `
-                  )
-                  .join("")}
-              </div>
-            `
-            : ""
-        }
+        ${isSidebarCollapsed ? renderSidebarGroupPopover(group) : ""}
       </div>
 
       <div class="submenu-list ${expanded ? "is-open" : ""}">
         ${group.items
           .map(
             (item) => `
-              <button class="submenu-item ${state.activePage === item.pageKey ? "is-active" : ""}" data-action="navigate-page" data-value="${item.pageKey}" type="button">
+              <button
+                class="submenu-item ${state.activePage === item.pageKey ? "is-active" : ""}"
+                data-action="navigate-page"
+                data-value="${item.pageKey}"
+                ${group.key === "goal" && item.pageKey === "goal-config" ? 'data-guide-id="config-prep-nav-goal-config"' : ""}
+                type="button"
+              >
                 <span class="submenu-label">${item.label}</span>
                 ${group.key === "goal" && item.pageKey === "my-goals" ? pendingGoalBadge : ""}
               </button>
@@ -2671,7 +3208,30 @@ function renderTopbar() {
         <div class="brand-name">Teams OKR</div>
       </button>
       <div class="topbar-right">
-        <button class="icon-button" type="button"><img src="./assets/help.svg" alt="" /></button>
+        <div class="topbar-help">
+          <button
+            class="icon-button topbar-icon-trigger ${state.openDropdown === "help-menu" ? "is-open" : ""}"
+            data-action="toggle-dropdown"
+            data-value="help-menu"
+            type="button"
+            aria-haspopup="menu"
+            aria-expanded="${state.openDropdown === "help-menu" ? "true" : "false"}"
+            aria-label="打开帮助菜单"
+          >
+            <img src="./assets/help.svg" alt="" />
+          </button>
+          ${
+            state.openDropdown === "help-menu"
+              ? `
+                <div class="dropdown-panel topbar-help-menu" role="menu" aria-label="帮助菜单">
+                  <button class="dropdown-option topbar-help-option" data-action="start-config-prep-guide" type="button" role="menuitem">
+                    <span class="topbar-help-option-title">配置准备</span>
+                  </button>
+                </div>
+              `
+              : ""
+          }
+        </div>
         <button class="icon-button" type="button"><img src="./assets/bell.svg" alt="" /></button>
         <div class="topbar-user-switch">
           <button
@@ -2683,12 +3243,14 @@ function renderTopbar() {
             aria-expanded="${state.openDropdown === "user-switch" ? "true" : "false"}"
             aria-label="切换当前查看角色"
           >
-            <div class="avatar">${escapeHtml(currentUser.avatar)}</div>
+            <div class="avatar user-chip-avatar">${escapeHtml(currentUser.avatar)}</div>
             <div class="user-meta">
               <div class="user-name">${escapeHtml(currentUser.label)}</div>
               <div class="role-tag">${escapeHtml(currentUser.roleLabel)}</div>
             </div>
-            <span class="user-switch-arrow">${renderArrow("down", "ui-arrow-sm")}</span>
+            <span class="user-switch-arrow" aria-hidden="true">
+              <img class="user-switch-arrow-icon" src="./assets/chevron-down.svg" alt="" />
+            </span>
           </button>
           ${
             state.openDropdown === "user-switch"
@@ -2735,17 +3297,17 @@ function renderOngoingFilterRow(filteredGoals) {
         </label>
 
         <div class="control control-period control-auto">
-          <button class="control-button" data-action="toggle-dropdown" data-value="period" type="button">
+          <button class="${dropdownTriggerClass("control-button", "period")}" data-action="toggle-dropdown" data-value="period" type="button" aria-expanded="${isDropdownOpen("period") ? "true" : "false"}">
             <span class="truncate">${escapeHtml(filters.period === "all" ? "全部周期" : filters.period)}</span>
-            ${renderArrow("down", "ui-arrow-sm")}
+            ${renderControlArrow()}
           </button>
           ${dropdowns.period}
         </div>
 
         <div class="control control-members control-auto">
-          <button class="control-button" data-action="toggle-dropdown" data-value="members" type="button">
+          <button class="${dropdownTriggerClass("control-button", "members")}" data-action="toggle-dropdown" data-value="members" type="button" aria-expanded="${isDropdownOpen("members") ? "true" : "false"}">
             <span class="truncate">${escapeHtml(memberLabel())}</span>
-            ${renderArrow("down", "ui-arrow-sm")}
+            ${renderControlArrow()}
           </button>
           ${dropdowns.members}
         </div>
@@ -2818,27 +3380,27 @@ function renderCompletedFilterRow() {
         </label>
 
         <div class="control control-period control-auto">
-          <button class="control-button" data-action="toggle-dropdown" data-value="period" type="button">
+          <button class="${dropdownTriggerClass("control-button", "period")}" data-action="toggle-dropdown" data-value="period" type="button" aria-expanded="${isDropdownOpen("period") ? "true" : "false"}">
             <span class="truncate">${escapeHtml(filters.period === "all" ? "全部周期" : filters.period)}</span>
-            ${renderArrow("down", "ui-arrow-sm")}
+            ${renderControlArrow()}
           </button>
           ${dropdowns.period}
         </div>
 
         <div class="control control-members control-auto">
-          <button class="control-button" data-action="toggle-dropdown" data-value="members" type="button">
+          <button class="${dropdownTriggerClass("control-button", "members")}" data-action="toggle-dropdown" data-value="members" type="button" aria-expanded="${isDropdownOpen("members") ? "true" : "false"}">
             <span class="truncate">${escapeHtml(memberLabel("completed"))}</span>
-            ${renderArrow("down", "ui-arrow-sm")}
+            ${renderControlArrow()}
           </button>
           ${dropdowns.members}
         </div>
 
         <div class="control control-type control-auto">
-          <button class="control-button" data-action="toggle-dropdown" data-value="type" type="button">
+          <button class="${dropdownTriggerClass("control-button", "type")}" data-action="toggle-dropdown" data-value="type" type="button" aria-expanded="${isDropdownOpen("type") ? "true" : "false"}">
             <span class="truncate">${escapeHtml(
               (COMPLETED_TYPE_OPTIONS.find((option) => option.key === filters.type) || COMPLETED_TYPE_OPTIONS[0]).label
             )}</span>
-            ${renderArrow("down", "ui-arrow-sm")}
+            ${renderControlArrow()}
           </button>
           ${dropdowns.type}
         </div>
@@ -3101,9 +3663,9 @@ function renderPendingFilterRow() {
         </label>
 
         <div class="control control-period control-auto">
-          <button class="control-button" data-action="toggle-my-goal-dropdown" data-value="my-goal-period" type="button">
+          <button class="${dropdownTriggerClass("control-button", "my-goal-period")}" data-action="toggle-my-goal-dropdown" data-value="my-goal-period" type="button" aria-expanded="${isDropdownOpen("my-goal-period") ? "true" : "false"}">
             <span class="truncate">${escapeHtml(filters.period === "all" ? "全部周期" : filters.period)}</span>
-            ${renderArrow("down", "ui-arrow-sm")}
+            ${renderControlArrow()}
           </button>
           ${dropdowns.period}
         </div>
@@ -3224,9 +3786,9 @@ function renderExecutingFilterRow() {
         </label>
 
         <div class="control control-period control-auto">
-          <button class="control-button" data-action="toggle-my-goal-dropdown" data-value="my-goal-period" type="button">
+          <button class="${dropdownTriggerClass("control-button", "my-goal-period")}" data-action="toggle-my-goal-dropdown" data-value="my-goal-period" type="button" aria-expanded="${isDropdownOpen("my-goal-period") ? "true" : "false"}">
             <span class="truncate">${escapeHtml(filters.period === "all" ? "全部周期" : filters.period)}</span>
-            ${renderArrow("down", "ui-arrow-sm")}
+            ${renderControlArrow()}
           </button>
           ${dropdowns.period}
         </div>
@@ -3247,9 +3809,9 @@ function renderMyCompletedFilterRow() {
         </label>
 
         <div class="control control-period control-auto">
-          <button class="control-button" data-action="toggle-my-goal-dropdown" data-value="my-goal-period" type="button">
+          <button class="${dropdownTriggerClass("control-button", "my-goal-period")}" data-action="toggle-my-goal-dropdown" data-value="my-goal-period" type="button" aria-expanded="${isDropdownOpen("my-goal-period") ? "true" : "false"}">
             <span class="truncate">${escapeHtml(filters.period === "all" ? "全部周期" : filters.period)}</span>
-            ${renderArrow("down", "ui-arrow-sm")}
+            ${renderControlArrow()}
           </button>
           ${dropdowns.period}
         </div>
@@ -3713,7 +4275,7 @@ function renderGoalConfigTreeRow(group) {
         ${
           isEditing
             ? `<div class="goal-config-tree-main is-editing">
-                <input class="goal-config-tree-input" data-field="goal-config-group-name" data-group-id="${group.id}" value="${escapeHtml(
+                <input class="goal-config-tree-input" data-field="goal-config-group-name" data-group-id="${group.id}" ${state.goalConfig.editingGroupId === group.id ? 'data-guide-id="config-prep-group-name"' : ""} value="${escapeHtml(
                   state.goalConfig.editingGroupName
                 )}" />
               </div>`
@@ -3761,7 +4323,7 @@ function renderGoalConfigTree() {
         ${getGoalConfigVisibleGroups().map((group) => renderGoalConfigTreeRow(group)).join("")}
       </div>
       <div class="goal-config-tree-footer">
-        <button class="goal-config-tree-add" data-action="goal-config-add-group" type="button">新增分组</button>
+        <button class="goal-config-tree-add" data-action="goal-config-add-group" data-guide-id="config-prep-add-group" type="button">新增分组</button>
         <button class="goal-config-tree-sync" data-action="goal-config-sync-groups" type="button" aria-label="同步组织架构">
           ${renderGoalConfigInlineIcon("sync")}
         </button>
@@ -3783,7 +4345,7 @@ function renderGoalConfigToolbar() {
         </label>
 
         <div class="control control-type control-auto goal-config-toolbar-type">
-          <button class="control-button goal-config-toolbar-type-button" data-action="toggle-goal-config-dropdown" data-value="goal-config-type" type="button">
+          <button class="${dropdownTriggerClass("control-button goal-config-toolbar-type-button", "goal-config-type")}" data-action="toggle-goal-config-dropdown" data-value="goal-config-type" type="button" aria-expanded="${isDropdownOpen("goal-config-type") ? "true" : "false"}">
             <span class="truncate">${escapeHtml(typeLabel)}</span>
             ${renderGoalConfigSelectArrow()}
           </button>
@@ -3822,7 +4384,7 @@ function renderGoalConfigToolbar() {
         </div>
         <div class="goal-config-create-wrap">
           <div class="goal-config-create-button" role="group" aria-label="创建目标">
-            <button class="goal-config-create-button-text" data-action="goal-config-create-direct" type="button">创建目标</button>
+            <button class="goal-config-create-button-text" data-action="goal-config-create-direct" data-guide-id="config-prep-create-goal" type="button">创建目标</button>
             <button
               class="goal-config-create-button-icon"
               data-action="toggle-goal-config-dropdown"
@@ -3960,7 +4522,7 @@ function renderGoalConfigDraftKrRow(kr, index, draft) {
   const weightValue = showEmptyWeightPlaceholder ? "" : kr.weight || "";
 
   return `
-    <div class="goal-config-kr-row is-editing">
+    <div class="goal-config-kr-row is-editing" ${index === 0 ? 'data-guide-id="config-prep-first-kr"' : ""}>
       <div class="goal-config-kr-main">
         <span class="kr-chip">KR ${index + 1}</span>
         <input class="goal-config-input goal-config-title-input" data-field="goal-config-kr-title" data-kr-id="${kr.id}" value="${escapeHtml(kr.title)}" placeholder="请输入KR名称" />
@@ -4016,7 +4578,7 @@ function renderGoalConfigEditingCard() {
       <div class="goal-config-edit-row goal-config-edit-row-align">
         ${renderGoalConfigFormLabel("对齐")}
         <div class="control goal-config-inline-control">
-          <button class="control-button goal-config-select-button goal-config-select-wide" data-action="toggle-goal-config-dropdown" data-value="goal-config-align" type="button">
+          <button class="${dropdownTriggerClass("control-button goal-config-select-button goal-config-select-wide", "goal-config-align")}" data-action="toggle-goal-config-dropdown" data-value="goal-config-align" type="button" aria-expanded="${isDropdownOpen("goal-config-align") ? "true" : "false"}">
             <span class="goal-config-align-display">
               ${renderGoalConfigInlineIcon("align")}
               <span>${escapeHtml(selectedAlign)}</span>
@@ -4052,7 +4614,13 @@ function renderGoalConfigEditingCard() {
       <div class="goal-config-card-content">
         <div class="goal-config-goal-row is-editing">
           <span class="goal-chip">目标</span>
-          <input class="goal-config-input goal-config-goal-input" data-field="goal-config-title" value="${escapeHtml(draft.title)}" placeholder="请输入目标名称" />
+          <input
+            class="goal-config-input goal-config-goal-input"
+            data-field="goal-config-title"
+            data-guide-id="config-prep-goal-title"
+            value="${escapeHtml(draft.title)}"
+            placeholder="请输入目标名称"
+          />
         </div>
 
         <div class="goal-config-kr-list is-editing">
@@ -4060,7 +4628,7 @@ function renderGoalConfigEditingCard() {
           ${renderGoalConfigDraftAddRow()}
         </div>
 
-        <div class="goal-config-info-row is-editing">
+        <div class="goal-config-info-row is-editing" data-guide-id="config-prep-executor-row">
           ${renderGoalConfigFormLabel("执行")}
           <div class="goal-config-info-value goal-config-info-value-editing">
             <button class="goal-config-inline-link goal-config-executor-select-link" data-action="toggle-goal-config-dropdown" data-value="goal-config-executors" type="button">
@@ -4105,7 +4673,7 @@ function renderGoalConfigEditingCard() {
           ${renderGoalConfigFormLabel("流程")}
           <div class="goal-config-info-value goal-config-info-value-editing">
             <div class="control goal-config-inline-control">
-              <button class="control-button goal-config-select-button goal-config-select-medium" data-action="toggle-goal-config-dropdown" data-value="goal-config-flow" type="button">
+              <button class="${dropdownTriggerClass("control-button goal-config-select-button goal-config-select-medium", "goal-config-flow")}" data-action="toggle-goal-config-dropdown" data-value="goal-config-flow" type="button" aria-expanded="${isDropdownOpen("goal-config-flow") ? "true" : "false"}">
                 <span class="truncate">${escapeHtml(draft.flow || getDefaultGoalConfigFlow())}</span>
                 ${renderGoalConfigSelectArrow()}
               </button>
@@ -4131,7 +4699,7 @@ function renderGoalConfigEditingCard() {
 
       <div class="goal-config-card-footer">
         <div class="goal-config-card-footer-actions">
-          <button class="modal-button-primary" data-action="goal-config-save" type="button">保存</button>
+          <button class="modal-button-primary" data-action="goal-config-save" data-guide-id="config-prep-save-goal" type="button">保存</button>
           <button class="modal-button" data-action="goal-config-cancel" type="button">取消</button>
         </div>
       </div>
@@ -4201,7 +4769,7 @@ function renderGoalConfigProcessToolbar() {
           state.goalConfig.processKeyword
         )}" placeholder="搜索关键字" />
       </label>
-      <button class="goal-config-process-create-button" data-action="open-goal-config-process-create" type="button">创建流程</button>
+      <button class="goal-config-process-create-button" data-action="open-goal-config-process-create" data-guide-id="config-prep-create-process" type="button">创建流程</button>
     </div>
   `;
 }
@@ -4332,9 +4900,10 @@ function renderGoalConfigProcessTable() {
 }
 
 function renderGoalConfigProcessCreateModal(overlay) {
+  const guideStaticClass = isConfigPrepGuideStep(4) ? " config-prep-guide-static-modal" : "";
   return `
     <div class="backdrop" data-action="close-overlay"></div>
-    <div class="modal goal-config-process-create-modal" data-overlay-panel="true">
+    <div class="modal goal-config-process-create-modal${guideStaticClass}" data-overlay-panel="true" data-guide-id="config-prep-process-modal">
       <div class="panel-header">
         <div>
           <h2 class="panel-title">创建流程</h2>
@@ -4529,8 +5098,24 @@ function renderGoalConfigPage() {
         <section class="content-card">
           <div class="tab-row">
             <div class="tabs">
-              <button class="tab ${state.goalConfig.activeTab === "library" ? "is-active" : ""}" data-action="set-goal-config-tab" data-value="library" type="button">目标库</button>
-              <button class="tab ${state.goalConfig.activeTab === "process" ? "is-active" : ""}" data-action="set-goal-config-tab" data-value="process" type="button">流程库</button>
+              <button
+                class="tab ${state.goalConfig.activeTab === "library" ? "is-active" : ""}"
+                data-action="set-goal-config-tab"
+                data-value="library"
+                data-guide-id="config-prep-tab-library"
+                type="button"
+              >
+                目标库
+              </button>
+              <button
+                class="tab ${state.goalConfig.activeTab === "process" ? "is-active" : ""}"
+                data-action="set-goal-config-tab"
+                data-value="process"
+                data-guide-id="config-prep-tab-process"
+                type="button"
+              >
+                流程库
+              </button>
             </div>
             <button class="launch-button" data-action="open-start-goal" type="button">
               <span>发起目标</span>
@@ -4884,7 +5469,7 @@ function renderStartGoalModalInner(overlay) {
             ${renderStartGoalChevronIcon("sm")}
           </div>
           <div class="control start-goal-period-control">
-            <button class="start-goal-period-button" data-action="toggle-dropdown" data-value="start-goal-period" type="button">
+            <button class="${dropdownTriggerClass("start-goal-period-button", "start-goal-period")}" data-action="toggle-dropdown" data-value="start-goal-period" type="button" aria-expanded="${isDropdownOpen("start-goal-period") ? "true" : "false"}">
               <span>${escapeHtml(nextOverlay.period)}</span>
               ${renderStartGoalChevronIcon()}
             </button>
@@ -4909,7 +5494,7 @@ function renderStartGoalModalInner(overlay) {
           <div class="start-goal-column-toolbar">
             <button class="start-goal-all-button ${allSelected ? "is-active" : ""}" data-action="toggle-start-goal-all" type="button">全选</button>
             <div class="control start-goal-group-control">
-              <button class="start-goal-group-button" data-action="toggle-dropdown" data-value="start-goal-group" type="button">
+              <button class="${dropdownTriggerClass("start-goal-group-button", "start-goal-group")}" data-action="toggle-dropdown" data-value="start-goal-group" type="button" aria-expanded="${isDropdownOpen("start-goal-group") ? "true" : "false"}">
                 <span class="truncate">${escapeHtml(groupLabel)}</span>
                 ${renderStartGoalChevronIcon()}
               </button>
@@ -5103,6 +5688,14 @@ function renderOverlay() {
   }
 
   return "";
+}
+
+function renderConfigPrepGuideShell() {
+  if (!state.configPrepGuide) {
+    return "";
+  }
+
+  return '<div class="config-prep-guide-root" data-config-prep-guide-layer></div>';
 }
 
 function openGoalView(goalId, tabKey = getTabKey()) {
@@ -5568,23 +6161,23 @@ function saveGoalConfigDraft() {
   const sourceDraft = clone(state.goalConfig.editingDraft);
   const draft = normalizeGoalConfigDraft(sourceDraft);
   if (!draft) {
-    return;
+    return false;
   }
 
   if (!draft.title.trim()) {
     showToast("请先填写目标名称");
-    return;
+    return false;
   }
 
   if (!draft.krs.length) {
     showToast("请至少保留一个关键结果");
-    return;
+    return false;
   }
 
   const hasEmptyKr = draft.krs.some((kr) => !kr.title.trim());
   if (hasEmptyKr) {
     showToast("请先补全关键结果名称");
-    return;
+    return false;
   }
 
   if (draft.type === "auto" || draft.type === "weighted") {
@@ -5592,7 +6185,7 @@ function saveGoalConfigDraft() {
     const missingWeightIndex = editableKrs.findIndex((kr) => !String(kr.weight || "").replace("%", "").trim());
     if (missingWeightIndex !== -1) {
       showToast(`请补全 KR${missingWeightIndex + 1} 的权重`);
-      return;
+      return false;
     }
   }
 
@@ -5602,7 +6195,7 @@ function saveGoalConfigDraft() {
     );
     if (missingMetricsIndex !== -1) {
       showToast(`请补全 KR${missingMetricsIndex + 1} 的门槛、及格、挑战`);
-      return;
+      return false;
     }
 
     const nonNumericMetricIndex = draft.krs.findIndex((kr) =>
@@ -5610,7 +6203,7 @@ function saveGoalConfigDraft() {
     );
     if (nonNumericMetricIndex !== -1) {
       showToast(`KR${nonNumericMetricIndex + 1} 的门槛、及格、挑战只能输入数字`);
-      return;
+      return false;
     }
 
     const invalidOrderIndex = draft.krs.findIndex((kr) =>
@@ -5618,7 +6211,7 @@ function saveGoalConfigDraft() {
     );
     if (invalidOrderIndex !== -1) {
       showToast(`KR${invalidOrderIndex + 1} 的门槛、及格、挑战只支持大中小或小中大`);
-      return;
+      return false;
     }
   }
 
@@ -5639,7 +6232,7 @@ function saveGoalConfigDraft() {
     );
     if (isGoalConfigMutualAlignBlocked(nextGoal, alignedTargetGoal)) {
       showToast("所选目标已对齐当前目标，不能互相对齐");
-      return;
+      return false;
     }
   }
 
@@ -5657,6 +6250,7 @@ function saveGoalConfigDraft() {
   state.goalConfig.expandedGroupIds = [...new Set([...state.goalConfig.expandedGroupIds, ...getGoalConfigAncestors(nextGoal.groupId)])];
   clearGoalConfigEditing();
   clearGoalConfigPanels();
+  return true;
 }
 
 function getInputPreserveFocus(input) {
@@ -5725,10 +6319,12 @@ function render(preserveFocus) {
     </div>
     ${renderGoalConfigProcessGuidePreload()}
     ${renderOverlay()}
+    ${renderConfigPrepGuideShell()}
   `;
 
   persistState();
   syncToast();
+  scheduleConfigPrepGuideSync();
 
   if (preserveFocus && preserveFocus.selector) {
     const input = document.querySelector(preserveFocus.selector);
@@ -5757,17 +6353,13 @@ function animateSidebarCollapse(target) {
   }
 
   sidebar.classList.toggle("is-collapsed", nextCollapsed);
+  syncSidebarGroupPopoversInDom();
 
   const collapseButton = sidebar.querySelector(".collapse-button");
   if (collapseButton) {
     collapseButton.classList.toggle("is-collapsed", nextCollapsed);
     collapseButton.setAttribute("aria-label", nextCollapsed ? "展开导航" : "收起导航");
     collapseButton.setAttribute("title", nextCollapsed ? "展开导航" : "收起导航");
-  }
-
-  const goalPopover = sidebar.querySelector(".sidebar-goal-popover");
-  if (goalPopover) {
-    goalPopover.remove();
   }
 
   if (target instanceof HTMLElement) {
@@ -5790,6 +6382,12 @@ function onAction(action, value, target) {
   const selectedPendingIds = getMyGoalSelection("pending");
 
   switch (action) {
+    case "start-config-prep-guide":
+      startConfigPrepGuide();
+      break;
+    case "close-config-prep-guide":
+      closeConfigPrepGuide();
+      break;
     case "toggle-sidebar-group": {
       if (state.sidebarCollapsed) {
         return;
@@ -5807,6 +6405,9 @@ function onAction(action, value, target) {
       }
       closeTransientPanels();
       state.overlay = null;
+      if (isConfigPrepGuideStep(1) && state.activePage === "goal-config") {
+        advanceConfigPrepGuide(2);
+      }
       break;
     case "switch-user": {
       const nextUserKey = normalizeCurrentUserKey(value);
@@ -5853,6 +6454,11 @@ function onAction(action, value, target) {
       clearGoalConfigEditing();
       cancelGoalConfigProcessEditing();
       state.overlay = null;
+      if (isConfigPrepGuideStep(2) && state.goalConfig.activeTab === "process") {
+        advanceConfigPrepGuide(3);
+      } else if (isConfigPrepGuideStep(5) && state.goalConfig.activeTab === "library") {
+        advanceConfigPrepGuide(6);
+      }
       break;
     case "goal-config-select-group":
       state.goalConfig.selectedGroupId = value;
@@ -5902,6 +6508,9 @@ function onAction(action, value, target) {
       state.goalConfig.selectedGroupId = draft.groupId;
       clearGoalConfigPanels();
       state.openDropdown = null;
+      if (isConfigPrepGuideStep(8)) {
+        advanceConfigPrepGuide(9);
+      }
       break;
     }
     case "goal-config-import": {
@@ -5958,11 +6567,16 @@ function onAction(action, value, target) {
       showToast("已模拟导出目标库");
       break;
     case "goal-config-save":
-      saveGoalConfigDraft();
+      if (saveGoalConfigDraft() && isConfigPrepGuideStep(11)) {
+        closeConfigPrepGuide();
+      }
       break;
     case "goal-config-cancel":
       clearGoalConfigEditing();
       clearGoalConfigPanels();
+      if (state.configPrepGuide && Number(state.configPrepGuide.step) >= 9) {
+        setConfigPrepGuideStep(8);
+      }
       break;
     case "set-goal-config-draft-type":
       if (state.goalConfig.editingDraft) {
@@ -6009,6 +6623,10 @@ function onAction(action, value, target) {
           ...state.goalConfig.editingDraft,
           executors: [...currentExecutors],
         };
+        if (isConfigPrepGuideStep(10) && state.goalConfig.editingDraft.executors.length) {
+          state.openDropdown = null;
+          advanceConfigPrepGuide(11);
+        }
       }
       break;
     case "goal-config-add-kr":
@@ -6061,6 +6679,9 @@ function onAction(action, value, target) {
       break;
     case "goal-config-add-group":
       createGoalConfigGroup(null);
+      if (isConfigPrepGuideStep(6)) {
+        advanceConfigPrepGuide(7);
+      }
       break;
     case "goal-config-add-child-group":
       createGoalConfigGroup(value);
@@ -6092,6 +6713,9 @@ function onAction(action, value, target) {
       };
       clearGoalConfigPanels();
       state.openDropdown = null;
+      if (isConfigPrepGuideStep(3)) {
+        advanceConfigPrepGuide(4);
+      }
       break;
     case "confirm-goal-config-process-create":
       if (state.overlay && state.overlay.type === "goal-config-process-create") {
@@ -6116,6 +6740,9 @@ function onAction(action, value, target) {
         setGoalConfigProcessPage(1);
         state.overlay = null;
         showToast("已创建流程，并模拟生成两个 OA 模板");
+        if (isConfigPrepGuideStep(4)) {
+          advanceConfigPrepGuide(5);
+        }
       }
       break;
     case "toggle-goal-config-process-row": {
@@ -6475,6 +7102,9 @@ function onAction(action, value, target) {
       state.overlay = null;
       break;
     case "close-overlay":
+      if (isConfigPrepGuideStep(4) && state.overlay?.type === "goal-config-process-create") {
+        setConfigPrepGuideStep(3);
+      }
       state.overlay = null;
       break;
     case "collapse-nav":
@@ -6488,6 +7118,15 @@ function onAction(action, value, target) {
 }
 
 document.addEventListener("click", (event) => {
+  const immediateActionTarget = event.target.closest("[data-action]");
+  if (
+    immediateActionTarget &&
+    ["start-config-prep-guide", "close-config-prep-guide"].includes(immediateActionTarget.dataset.action)
+  ) {
+    onAction(immediateActionTarget.dataset.action, immediateActionTarget.dataset.value, immediateActionTarget);
+    return;
+  }
+
   const inlineEditResult = commitGoalConfigInlineEditingOnClick(event);
   if (inlineEditResult.blocked) {
     return;
@@ -6583,9 +7222,7 @@ document.addEventListener("input", (event) => {
       ...state.overlay,
       processName: event.target.value,
     };
-    if (!deferRender) {
-      render(preserveFocus);
-    }
+    return;
   }
   if (event.target.dataset.field === "goal-config-group-name") {
     state.goalConfig.editingGroupName = event.target.value;
@@ -6635,6 +7272,29 @@ document.addEventListener("input", (event) => {
   }
 });
 
+document.addEventListener("focusout", (event) => {
+  if (!isConfigPrepGuideStep(9) || !isConfigPrepGuideDraftFocusField(event.target)) {
+    return;
+  }
+
+  window.requestAnimationFrame(() => {
+    if (!isConfigPrepGuideStep(9)) {
+      return;
+    }
+
+    if (isConfigPrepGuideDraftFocusField(document.activeElement)) {
+      return;
+    }
+
+    if (!isConfigPrepGuideGoalDraftReady()) {
+      return;
+    }
+
+    advanceConfigPrepGuide(10);
+    render();
+  });
+});
+
 document.addEventListener("keydown", (event) => {
   if (!(event.target instanceof HTMLInputElement)) {
     return;
@@ -6663,6 +7323,9 @@ document.addEventListener("keydown", (event) => {
     }
     if (event.key === "Escape") {
       event.preventDefault();
+      if (isConfigPrepGuideStep(4)) {
+        setConfigPrepGuideStep(3);
+      }
       state.overlay = null;
       render();
     }
@@ -6726,6 +7389,9 @@ function commitGoalConfigInlineEditingOnClick(event) {
 document.addEventListener("keydown", (event) => {
   if (event.key === "Escape") {
     if (state.overlay) {
+      if (isConfigPrepGuideStep(4) && state.overlay.type === "goal-config-process-create") {
+        setConfigPrepGuideStep(3);
+      }
       state.overlay = null;
       render();
       return;
@@ -6756,6 +7422,30 @@ document.addEventListener("keydown", (event) => {
       render(preserveFocus);
     }
   }
+});
+
+window.addEventListener("resize", () => {
+  if (state.configPrepGuide) {
+    scheduleConfigPrepGuideSync();
+  }
+});
+
+window.addEventListener(
+  "scroll",
+  () => {
+    if (state.configPrepGuide) {
+      scheduleConfigPrepGuideSync();
+    }
+  },
+  true
+);
+
+document.addEventListener("animationend", (event) => {
+  if (!shouldSyncConfigPrepGuideAfterMotion(event.target)) {
+    return;
+  }
+
+  scheduleConfigPrepGuideSync();
 });
 
 render();
