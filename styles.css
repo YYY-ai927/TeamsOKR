@@ -140,6 +140,7 @@ img {
 }
 
 .topbar-help > .topbar-help-menu.dropdown-panel {
+  --dropdown-motion-base-transform: translateX(-50%);
   position: absolute;
   top: calc(100% + 10px);
   left: 50%;
@@ -150,7 +151,6 @@ img {
   min-width: max-content;
   max-width: calc(100vw - 24px);
   padding: 6px;
-  transform: translateX(-50%);
 }
 
 .topbar-help-option {
@@ -1182,7 +1182,8 @@ img {
 .control-button:hover,
 .control-button:focus-visible,
 .control-button.is-open,
-.control:has(.dropdown-panel) > .control-button {
+.control:has(.dropdown-panel[data-dropdown-state="opening"]) > .control-button,
+.control:has(.dropdown-panel[data-dropdown-state="open"]) > .control-button {
   border-color: var(--line-brand);
 }
 
@@ -1224,7 +1225,8 @@ img {
 }
 
 .control-button.is-open .control-arrow,
-.control:has(.dropdown-panel) > .control-button .control-arrow {
+.control:has(.dropdown-panel[data-dropdown-state="opening"]) > .control-button .control-arrow,
+.control:has(.dropdown-panel[data-dropdown-state="open"]) > .control-button .control-arrow {
   transform: rotate(180deg);
 }
 
@@ -1259,7 +1261,8 @@ img {
   transform: rotate(45deg) translateY(-1px);
 }
 
-.control:has(.dropdown-panel) .ui-arrow-down {
+.control:has(.dropdown-panel[data-dropdown-state="opening"]) .ui-arrow-down,
+.control:has(.dropdown-panel[data-dropdown-state="open"]) .ui-arrow-down {
   transform: rotate(-135deg) translateY(1px);
 }
 
@@ -1374,7 +1377,7 @@ img {
   line-height: 1.4;
   transition:
     border-color 0.18s ease,
-    background 0.18s ease,
+    background-color 0.18s ease,
     color 0.18s ease;
 }
 
@@ -1382,6 +1385,11 @@ img {
   border-color: #3370ff;
   background: #3370ff;
   color: #fff;
+}
+
+.primary-action.is-enabled:hover {
+  border-color: #4e83fd;
+  background-color: #4e83fd;
 }
 
 .primary-action-guide {
@@ -1434,7 +1442,34 @@ img {
   transform: translateY(0);
 }
 
+@keyframes dropdown-panel-pop-in {
+  0% {
+    opacity: 0;
+    transform: var(--dropdown-motion-base-transform, translate3d(0, 0, 0)) translate3d(0, -6px, 0) scale(0.96);
+  }
+  68% {
+    opacity: 1;
+    transform: var(--dropdown-motion-base-transform, translate3d(0, 0, 0)) translate3d(0, 1px, 0) scale(1.01);
+  }
+  100% {
+    opacity: 1;
+    transform: var(--dropdown-motion-base-transform, translate3d(0, 0, 0)) translate3d(0, 0, 0) scale(1);
+  }
+}
+
+@keyframes dropdown-panel-pop-out {
+  0% {
+    opacity: 1;
+    transform: var(--dropdown-motion-base-transform, translate3d(0, 0, 0)) translate3d(0, 0, 0) scale(1);
+  }
+  100% {
+    opacity: 0;
+    transform: var(--dropdown-motion-base-transform, translate3d(0, 0, 0)) translate3d(0, -4px, 0) scale(0.97);
+  }
+}
+
 .dropdown-panel {
+  --dropdown-motion-base-transform: translate3d(0, 0, 0);
   position: absolute;
   top: calc(100% + 8px);
   left: 0;
@@ -1445,6 +1480,36 @@ img {
   border-radius: 10px;
   background: #fff;
   box-shadow: var(--shadow-panel);
+  transform: var(--dropdown-motion-base-transform);
+  transform-origin: top center;
+}
+
+.row-menu {
+  transform-origin: top right;
+}
+
+.goal-config-card-menu,
+.goal-config-group-menu,
+.goal-config-process-menu {
+  transform-origin: top right;
+}
+
+.dropdown-panel[data-dropdown-state="opening"],
+.dropdown-panel[data-dropdown-state="closing"],
+.row-menu[data-dropdown-state="opening"],
+.row-menu[data-dropdown-state="closing"] {
+  will-change: opacity, transform;
+}
+
+.dropdown-panel[data-dropdown-state="opening"],
+.row-menu[data-dropdown-state="opening"] {
+  animation: dropdown-panel-pop-in 220ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.dropdown-panel[data-dropdown-state="closing"],
+.row-menu[data-dropdown-state="closing"] {
+  pointer-events: none;
+  animation: dropdown-panel-pop-out 220ms cubic-bezier(0.4, 0, 0.2, 1) forwards;
 }
 
 .dropdown-option {
@@ -2091,6 +2156,30 @@ img {
   display: flex;
   align-items: center;
   gap: 8px;
+}
+
+.ghost-button[data-action="approve-my-goal-batch"] {
+  transition:
+    background-color 160ms ease,
+    border-color 160ms ease,
+    color 160ms ease;
+}
+
+.ghost-button[data-action="approve-my-goal-batch"]:hover {
+  background-color: #f2f3f5;
+}
+
+.danger-button[data-action="reject-my-goal-batch"],
+.danger-button[data-action="delete-batch"] {
+  transition:
+    background-color 160ms ease,
+    border-color 160ms ease,
+    color 160ms ease;
+}
+
+.danger-button[data-action="reject-my-goal-batch"]:hover,
+.danger-button[data-action="delete-batch"]:hover {
+  background-color: #fde2e2;
 }
 
 .ghost-button,
@@ -2843,18 +2932,22 @@ img {
 .start-goal-period-button:hover,
 .start-goal-period-button:focus-visible,
 .start-goal-period-button.is-open,
-.start-goal-period-control:has(.dropdown-panel) .start-goal-period-button,
+.start-goal-period-control:has(.dropdown-panel[data-dropdown-state="opening"]) .start-goal-period-button,
+.start-goal-period-control:has(.dropdown-panel[data-dropdown-state="open"]) .start-goal-period-button,
 .start-goal-group-button:hover,
 .start-goal-group-button:focus-visible,
 .start-goal-group-button.is-open,
-.start-goal-group-control:has(.dropdown-panel) .start-goal-group-button {
+.start-goal-group-control:has(.dropdown-panel[data-dropdown-state="opening"]) .start-goal-group-button,
+.start-goal-group-control:has(.dropdown-panel[data-dropdown-state="open"]) .start-goal-group-button {
   border-color: var(--line-brand);
 }
 
 .start-goal-period-button.is-open .start-goal-chevron-icon,
 .start-goal-group-button.is-open .start-goal-chevron-icon,
-.start-goal-period-control:has(.dropdown-panel) .start-goal-chevron-icon,
-.start-goal-group-control:has(.dropdown-panel) .start-goal-chevron-icon {
+.start-goal-period-control:has(.dropdown-panel[data-dropdown-state="opening"]) .start-goal-chevron-icon,
+.start-goal-period-control:has(.dropdown-panel[data-dropdown-state="open"]) .start-goal-chevron-icon,
+.start-goal-group-control:has(.dropdown-panel[data-dropdown-state="opening"]) .start-goal-chevron-icon,
+.start-goal-group-control:has(.dropdown-panel[data-dropdown-state="open"]) .start-goal-chevron-icon {
   transform: rotate(180deg);
 }
 
@@ -3379,6 +3472,14 @@ img {
   color: #4c4c4d;
   font-size: 14px;
   line-height: 22px;
+  transition:
+    background-color 160ms ease,
+    border-color 160ms ease,
+    color 160ms ease;
+}
+
+.goal-config-tree-add:hover {
+  background-color: #f2f3f5;
 }
 
 .goal-config-tree-sync {
@@ -3390,6 +3491,10 @@ img {
   border: 1px solid #d6d8db;
   border-radius: 6px;
   color: #646a73;
+  transition:
+    background-color 160ms ease,
+    border-color 160ms ease,
+    color 160ms ease;
 }
 
 .goal-config-tree-collapse-icon {
@@ -3405,7 +3510,7 @@ img {
 }
 
 .goal-config-tree-sync:hover {
-  background: #f7f8fa;
+  background-color: #f2f3f5;
 }
 
 .goal-config-tree-panel.is-collapsed .goal-config-tree-collapse-handle {
@@ -3476,7 +3581,8 @@ img {
 }
 
 .control-button.is-open .goal-config-select-arrow,
-.control:has(.dropdown-panel) > .control-button .goal-config-select-arrow {
+.control:has(.dropdown-panel[data-dropdown-state="opening"]) > .control-button .goal-config-select-arrow,
+.control:has(.dropdown-panel[data-dropdown-state="open"]) > .control-button .goal-config-select-arrow {
   transform: rotate(180deg);
 }
 
@@ -3501,6 +3607,14 @@ img {
 
 .goal-config-toolbar-more-button {
   flex: 0 0 32px;
+  transition:
+    background-color 160ms ease,
+    border-color 160ms ease,
+    color 160ms ease;
+}
+
+.goal-config-toolbar-more-button:hover {
+  background-color: #f2f3f5;
 }
 
 .goal-config-toolbar-more-rotator {
@@ -3531,6 +3645,12 @@ img {
   background: rgba(22, 93, 255, 0.06);
   color: #336df4;
   overflow: hidden;
+  transition: background-color 160ms ease;
+}
+
+.goal-config-create-button:has(.goal-config-create-button-text:hover),
+.goal-config-create-button:has(.goal-config-create-button-icon:hover) {
+  background-color: #e0e9fe;
 }
 
 .goal-config-create-button-text {
@@ -3552,6 +3672,14 @@ img {
   white-space: nowrap;
   text-align: left;
   cursor: pointer;
+  transition:
+    background-color 160ms ease,
+    border-color 160ms ease,
+    color 160ms ease;
+}
+
+.goal-config-create-button-text:hover {
+  background-color: #e0e9fe;
 }
 
 .goal-config-create-button-icon {
@@ -3568,6 +3696,14 @@ img {
   background: #fff;
   color: #336df4;
   cursor: pointer;
+  transition:
+    background-color 160ms ease,
+    border-color 160ms ease,
+    color 160ms ease;
+}
+
+.goal-config-create-button-icon:hover {
+  background-color: #e0e9fe;
 }
 
 .goal-config-create-arrow-wrap {
@@ -3644,6 +3780,14 @@ img {
   color: #336df4;
   font-size: 14px;
   line-height: 22px;
+  transition:
+    background-color 160ms ease,
+    border-color 160ms ease,
+    color 160ms ease;
+}
+
+.goal-config-process-create-button:hover {
+  background-color: #e0e9fe;
 }
 
 .goal-config-process-region {

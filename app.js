@@ -1,6 +1,7 @@
 const STORAGE_KEY = "okr-inprogress-demo:v3-demo-default";
 const TOAST_DURATION = 2200;
 const DROPDOWN_CHEVRON_ANIMATION_MS = 220;
+const DROPDOWN_PANEL_ANIMATION_MS = 220;
 const DEFAULT_CURRENT_USER_KEY = "yanbo";
 const START_GOAL_PERIOD_TYPE_OPTIONS = [
   { key: "monthly", label: "月度" },
@@ -494,6 +495,7 @@ const USER_PROFILE_BY_KEY = Object.fromEntries(
 const app = document.getElementById("app");
 let toastTimer = null;
 let configPrepGuideFrame = 0;
+let configPrepGuideTimer = 0;
 const goalConfigProcessGuideImageCache = [];
 
 const clone = (value) => JSON.parse(JSON.stringify(value));
@@ -876,6 +878,13 @@ function makeDefaultState() {
 
 let state = loadState();
 let pendingDropdownChevronAnimations = [];
+let openingDropdownKeys = new Set();
+let closingDropdownKeys = new Set();
+let dropdownCloseTimers = new Map();
+let openingTransientPanelKeys = new Set();
+let closingTransientPanelKeys = new Set();
+let transientPanelCloseTimers = new Map();
+let dropdownMotionCleanupQueued = false;
 
 function loadState() {
   const base = makeDefaultState();
@@ -1036,6 +1045,124 @@ function flushDropdownChevronAnimations() {
   });
 }
 
+function scheduleDropdownMotionStateCleanup() {
+  if (dropdownMotionCleanupQueued) {
+    return;
+  }
+
+  dropdownMotionCleanupQueued = true;
+  requestAnimationFrame(() => {
+    openingDropdownKeys.clear();
+    openingTransientPanelKeys.clear();
+    dropdownMotionCleanupQueued = false;
+  });
+}
+
+function clearClosingDropdown(dropdownKey) {
+  if (!dropdownKey) {
+    return;
+  }
+
+  const timer = dropdownCloseTimers.get(dropdownKey);
+  if (timer) {
+    clearTimeout(timer);
+    dropdownCloseTimers.delete(dropdownKey);
+  }
+
+  closingDropdownKeys.delete(dropdownKey);
+}
+
+function refreshDropdownMotionContainers() {
+  if (syncGoalConfigTransferModal()) {
+    return;
+  }
+
+  if (syncStartGoalModal()) {
+    return;
+  }
+
+  render();
+}
+
+function queueClosingDropdown(dropdownKey) {
+  if (!dropdownKey) {
+    return;
+  }
+
+  clearClosingDropdown(dropdownKey);
+  openingDropdownKeys.delete(dropdownKey);
+  closingDropdownKeys.add(dropdownKey);
+
+  const timer = setTimeout(() => {
+    dropdownCloseTimers.delete(dropdownKey);
+    if (!closingDropdownKeys.delete(dropdownKey)) {
+      return;
+    }
+
+    refreshDropdownMotionContainers();
+  }, DROPDOWN_PANEL_ANIMATION_MS);
+
+  dropdownCloseTimers.set(dropdownKey, timer);
+}
+
+function getTransientPanelKey(panelType, panelId) {
+  return `${panelType}:${panelId}`;
+}
+
+function clearClosingTransientPanel(panelType, panelId) {
+  if (!panelId) {
+    return;
+  }
+
+  const transientPanelKey = getTransientPanelKey(panelType, panelId);
+  const timer = transientPanelCloseTimers.get(transientPanelKey);
+  if (timer) {
+    clearTimeout(timer);
+    transientPanelCloseTimers.delete(transientPanelKey);
+  }
+
+  closingTransientPanelKeys.delete(transientPanelKey);
+}
+
+function queueClosingTransientPanel(panelType, panelId) {
+  if (!panelId) {
+    return;
+  }
+
+  const transientPanelKey = getTransientPanelKey(panelType, panelId);
+  clearClosingTransientPanel(panelType, panelId);
+  openingTransientPanelKeys.delete(transientPanelKey);
+  closingTransientPanelKeys.add(transientPanelKey);
+
+  const timer = setTimeout(() => {
+    transientPanelCloseTimers.delete(transientPanelKey);
+    if (!closingTransientPanelKeys.delete(transientPanelKey)) {
+      return;
+    }
+
+    refreshDropdownMotionContainers();
+  }, DROPDOWN_PANEL_ANIMATION_MS);
+
+  transientPanelCloseTimers.set(transientPanelKey, timer);
+}
+
+function setAnimatedPanelState(panelType, currentId, nextId, applyState) {
+  if (currentId === nextId) {
+    return;
+  }
+
+  if (currentId) {
+    queueClosingTransientPanel(panelType, currentId);
+  }
+
+  if (nextId) {
+    clearClosingTransientPanel(panelType, nextId);
+    openingTransientPanelKeys.add(getTransientPanelKey(panelType, nextId));
+  }
+
+  applyState(nextId);
+}
+
 function setDropdownOpenState(nextDropdown) {
   const previousDropdown = state.openDropdown;
   if (previousDropdown === nextDropdown) {
@@ -1044,9 +1171,12 @@ function setDropdownOpenState(nextDropdown) {
 
   if (previousDropdown) {
     queueDropdownChevronAnimation(previousDropdown, "closing");
+    queueClosingDropdown(previousDropdown);
   }
 
   if (nextDropdown) {
+    clearClosingDropdown(nextDropdown);
+    openingDropdownKeys.add(nextDropdown);
     queueDropdownChevronAnimation(nextDropdown, "opening");
   }
 
@@ -1699,8 +1829,8 @@ function canAdvanceSelection(tabKey = getTabKey()) {
 function resetListState(tabKey = getTabKey()) {
   setActivePage(1, tabKey);
   setActiveSelection([], tabKey);
-  state.openDropdown = null;
-  state.openRowMenu = null;
+  setDropdownOpenState(null);
+  setRowMenuOpenState(null);
 }
 
 function getMyGoalTabKey(tabKey = state.myGoals.activeTab) {
@@ -2332,7 +2462,7 @@ function getGoalConfigProcessHeaderState(pageProcesses) {
 function resetGoalConfigProcessState() {
   setGoalConfigProcessPage(1);
   state.goalConfig.processSelection = [];
-  state.goalConfig.processMenuId = null;
+  setGoalConfigProcessMenuId(null);
 }
 
 function normalizeProcessName(value) {
@@ -2386,7 +2516,7 @@ function saveGoalConfigProcessName(processId) {
   }
   state.goalConfig.processEditingId = null;
   state.goalConfig.processEditingName = "";
-  state.goalConfig.processMenuId = null;
+  setGoalConfigProcessMenuId(null);
   return true;
 }
 
@@ -2425,7 +2555,7 @@ function saveGoalConfigGroupName(groupId) {
 function cancelGoalConfigProcessEditing() {
   state.goalConfig.processEditingId = null;
   state.goalConfig.processEditingName = "";
-  state.goalConfig.processMenuId = null;
+  setGoalConfigProcessMenuId(null);
 }
 
 function getGoalConfigProcessGuideStep(step) {
@@ -2597,7 +2727,7 @@ function renderTopbarGuideOption(action, title, type) {
 function startConfigPrepGuideByType(type, startStep = 1) {
   const blockedMessage = getGuideStartBlockedMessage(type);
   if (blockedMessage) {
-    state.openDropdown = null;
+    setDropdownOpenState(null);
     showToast(blockedMessage);
     return false;
   }
@@ -3026,8 +3156,34 @@ function syncConfigPrepGuide() {
   bubble.style.left = `${position.left}px`;
 }
 
-function scheduleConfigPrepGuideSync() {
+function shouldDelayConfigPrepGuideSyncForAnimatedTarget() {
+  if (!state.configPrepGuide) {
+    return false;
+  }
+
+  const step = getConfigPrepGuideStep();
+  if (!step) {
+    return false;
+  }
+
+  return getConfigPrepGuideTargetElements(step).some(
+    (element) => element instanceof HTMLElement && ["opening", "closing"].includes(element.dataset.dropdownState || "")
+  );
+}
+
+function scheduleConfigPrepGuideSync(syncImmediately = false) {
   window.cancelAnimationFrame(configPrepGuideFrame);
+  window.clearTimeout(configPrepGuideTimer);
+  configPrepGuideTimer = 0;
+
+  if (!syncImmediately && shouldDelayConfigPrepGuideSyncForAnimatedTarget()) {
+    configPrepGuideTimer = window.setTimeout(() => {
+      configPrepGuideTimer = 0;
+      scheduleConfigPrepGuideSync(true);
+    }, DROPDOWN_PANEL_ANIMATION_MS);
+    return;
+  }
+
   configPrepGuideFrame = window.requestAnimationFrame(() => {
     configPrepGuideFrame = 0;
     syncConfigPrepGuide();
@@ -3371,16 +3527,16 @@ function buildGoalViewCardData(goal, tabKey = getTabKey()) {
 }
 
 function clearGoalConfigPanels() {
-  state.goalConfig.groupMenuId = null;
-  state.goalConfig.cardMenuId = null;
-  state.goalConfig.processMenuId = null;
+  setGoalConfigGroupMenuId(null);
+  setGoalConfigCardMenuId(null);
+  setGoalConfigProcessMenuId(null);
 }
 
 function resetMyGoalListState(tabKey = getMyGoalTabKey()) {
   setMyGoalPage(1, tabKey);
   setMyGoalSelection([], tabKey);
-  state.openDropdown = null;
-  state.openRowMenu = null;
+  setDropdownOpenState(null);
+  setRowMenuOpenState(null);
 }
 
 function clearAllTableSelections() {
@@ -3390,7 +3546,7 @@ function clearAllTableSelections() {
   state.myGoals.selectionByTab.executing = [];
   state.myGoals.selectionByTab.completed = [];
   state.goalConfig.processSelection = [];
-  state.goalConfig.processMenuId = null;
+  setGoalConfigProcessMenuId(null);
 }
 
 function refreshCurrentPageTableState(pageKey = state.activePage) {
@@ -3413,8 +3569,8 @@ function refreshCurrentPageTableState(pageKey = state.activePage) {
 }
 
 function closeTransientPanels() {
-  state.openDropdown = null;
-  state.openRowMenu = null;
+  setDropdownOpenState(null);
+  setRowMenuOpenState(null);
   clearGoalConfigPanels();
   cancelGoalConfigGroupEditing();
   cancelGoalConfigProcessEditing();
@@ -3518,6 +3674,78 @@ function dropdownTriggerClass(baseClass, dropdownKey) {
   return `${baseClass}${isDropdownOpen(dropdownKey) ? " is-open" : ""}`;
 }
 
+function getDropdownMotionState(dropdownKey) {
+  if (state.openDropdown === dropdownKey) {
+    return openingDropdownKeys.has(dropdownKey) ? "opening" : "open";
+  }
+
+  return closingDropdownKeys.has(dropdownKey) ? "closing" : "closed";
+}
+
+function shouldRenderDropdown(dropdownKey) {
+  return getDropdownMotionState(dropdownKey) !== "closed";
+}
+
+function renderDropdownPanel(dropdownKey, content, className = "dropdown-panel", attributes = "") {
+  if (!shouldRenderDropdown(dropdownKey)) {
+    return "";
+  }
+
+  const extraAttributes = attributes ? ` ${attributes.trim()}` : "";
+  return `
+    <div class="${className}" data-dropdown-state="${getDropdownMotionState(dropdownKey)}"${extraAttributes}>
+      ${content}
+    </div>
+  `;
+}
+
+function getTransientPanelMotionState(panelType, panelId, isOpen) {
+  const transientPanelKey = getTransientPanelKey(panelType, panelId);
+  if (isOpen) {
+    return openingTransientPanelKeys.has(transientPanelKey) ? "opening" : "open";
+  }
+
+  return closingTransientPanelKeys.has(transientPanelKey) ? "closing" : "closed";
+}
+
+function renderTransientPanel(panelType, panelId, isOpen, content, className, attributes = "") {
+  const motionState = getTransientPanelMotionState(panelType, panelId, isOpen);
+  if (motionState === "closed") {
+    return "";
+  }
+
+  const extraAttributes = attributes ? ` ${attributes.trim()}` : "";
+  return `
+    <div class="${className}" data-dropdown-state="${motionState}"${extraAttributes}>
+      ${content}
+    </div>
+  `;
+}
+
+function setRowMenuOpenState(nextMenuId) {
+  setAnimatedPanelState("row-menu", state.openRowMenu, nextMenuId, (value) => {
+    state.openRowMenu = value;
+  });
+}
+
+function setGoalConfigCardMenuId(nextId) {
+  setAnimatedPanelState("goal-config-card-menu", state.goalConfig.cardMenuId, nextId, (value) => {
+    state.goalConfig.cardMenuId = value;
+  });
+}
+
+function setGoalConfigGroupMenuId(nextId) {
+  setAnimatedPanelState("goal-config-group-menu", state.goalConfig.groupMenuId, nextId, (value) => {
+    state.goalConfig.groupMenuId = value;
+  });
+}
+
+function setGoalConfigProcessMenuId(nextId) {
+  setAnimatedPanelState("goal-config-process-menu", state.goalConfig.processMenuId, nextId, (value) => {
+    state.goalConfig.processMenuId = value;
+  });
+}
+
 function renderBreadcrumbSeparator() {
   return `
     <span class="breadcrumb-separator" aria-hidden="true">
@@ -3532,10 +3760,9 @@ function renderDropdowns(tabKey = getTabKey()) {
   const currentTab = getTabKey(tabKey);
   const filters = getActiveFilters(currentTab);
   return {
-    period:
-      state.openDropdown === "period"
-        ? `
-        <div class="dropdown-panel">
+    period: renderDropdownPanel(
+      "period",
+      `
           <button class="dropdown-option ${filters.period === "all" ? "is-active" : ""}" data-action="set-period" data-value="all" type="button">全部周期</button>
           ${getPeriodOptions(currentTab)
             .map(
@@ -3546,13 +3773,13 @@ function renderDropdowns(tabKey = getTabKey()) {
               `
             )
             .join("")}
-        </div>
       `
-        : "",
+    ),
     type:
-      currentTab === "completed" && state.openDropdown === "type"
-        ? `
-        <div class="dropdown-panel">
+      currentTab === "completed"
+        ? renderDropdownPanel(
+            "type",
+            `
           ${COMPLETED_TYPE_OPTIONS.map(
             (option) => `
               <button class="dropdown-option ${filters.type === option.key ? "is-active" : ""}" data-action="set-type" data-value="${option.key}" type="button">
@@ -3560,13 +3787,12 @@ function renderDropdowns(tabKey = getTabKey()) {
               </button>
             `
           ).join("")}
-        </div>
-      `
+        `
+          )
         : "",
-    members:
-      state.openDropdown === "members"
-        ? `
-        <div class="dropdown-panel member-dropdown">
+    members: renderDropdownPanel(
+      "members",
+      `
           <div class="member-heading">选择成员或部门，部门会自动包含子部门成员</div>
           ${MEMBER_OPTIONS.map((option) => {
             const active = filters.members.includes(option.key);
@@ -3580,13 +3806,13 @@ function renderDropdowns(tabKey = getTabKey()) {
               </button>
             `;
           }).join("")}
-        </div>
       `
-        : "",
-    pageSize:
-      state.openDropdown === "page-size"
-        ? `
-        <div class="dropdown-panel">
+      ,
+      "dropdown-panel member-dropdown"
+    ),
+    pageSize: renderDropdownPanel(
+      "page-size",
+      `
           ${PAGE_SIZE_OPTIONS.map(
             (size) => `
               <button class="dropdown-option ${state.pageSize === size ? "is-active" : ""}" data-action="set-page-size" data-value="${size}" type="button">
@@ -3594,9 +3820,8 @@ function renderDropdowns(tabKey = getTabKey()) {
               </button>
             `
           ).join("")}
-        </div>
       `
-        : "",
+    ),
   };
 }
 
@@ -3604,10 +3829,9 @@ function renderMyGoalsDropdowns(tabKey = getMyGoalTabKey()) {
   const currentTab = getMyGoalTabKey(tabKey);
   const filters = getMyGoalFilters(currentTab);
   return {
-    period:
-      state.openDropdown === "my-goal-period"
-        ? `
-        <div class="dropdown-panel">
+    period: renderDropdownPanel(
+      "my-goal-period",
+      `
           <button class="dropdown-option ${filters.period === "all" ? "is-active" : ""}" data-action="set-my-goal-period" data-value="all" type="button">全部周期</button>
           ${getMyGoalPeriodOptions(currentTab)
             .map(
@@ -3618,13 +3842,11 @@ function renderMyGoalsDropdowns(tabKey = getMyGoalTabKey()) {
               `
             )
             .join("")}
-        </div>
       `
-        : "",
-    pageSize:
-      state.openDropdown === "my-goal-page-size"
-        ? `
-        <div class="dropdown-panel">
+    ),
+    pageSize: renderDropdownPanel(
+      "my-goal-page-size",
+      `
           ${PAGE_SIZE_OPTIONS.map(
             (size) => `
               <button class="dropdown-option ${state.pageSize === size ? "is-active" : ""}" data-action="set-my-goal-page-size" data-value="${size}" type="button">
@@ -3632,9 +3854,8 @@ function renderMyGoalsDropdowns(tabKey = getMyGoalTabKey()) {
               </button>
             `
           ).join("")}
-        </div>
       `
-        : "",
+    ),
   };
 }
 
@@ -3763,16 +3984,15 @@ function renderTopbar() {
           >
             <img src="./assets/help.svg" alt="" />
           </button>
-          ${
-            state.openDropdown === "help-menu"
-              ? `
-                <div class="dropdown-panel topbar-help-menu" role="menu" aria-label="帮助菜单">
-                  ${renderTopbarGuideOption("start-config-prep-guide", "目标与流程", "goal-process")}
-                  ${renderTopbarGuideOption("start-launch-advance-guide", "发起与推进", "launch-advance")}
-                </div>
-              `
-              : ""
-          }
+          ${renderDropdownPanel(
+            "help-menu",
+            `
+              ${renderTopbarGuideOption("start-config-prep-guide", "目标与流程", "goal-process")}
+              ${renderTopbarGuideOption("start-launch-advance-guide", "发起与推进", "launch-advance")}
+            `,
+            "dropdown-panel topbar-help-menu",
+            'role="menu" aria-label="帮助菜单"'
+          )}
         </div>
         <button class="icon-button" type="button"><img src="./assets/bell.svg" alt="" /></button>
         <div class="topbar-user-switch">
@@ -3794,32 +4014,31 @@ function renderTopbar() {
               <img class="user-switch-arrow-icon" src="./assets/chevron-down.svg" alt="" />
             </span>
           </button>
-          ${
-            state.openDropdown === "user-switch"
-              ? `
-                <div class="dropdown-panel user-switch-panel" role="menu" aria-label="角色切换">
-                  ${USER_PROFILES.map(
-                    (profile) => `
-                      <button
-                        class="dropdown-option user-switch-option ${profile.key === currentUser.key ? "is-active" : ""}"
-                        data-action="switch-user"
-                        data-value="${profile.key}"
-                        type="button"
-                        role="menuitemradio"
-                        aria-checked="${profile.key === currentUser.key ? "true" : "false"}"
-                      >
-                        <span class="avatar user-switch-option-avatar">${escapeHtml(profile.avatar)}</span>
-                        <span class="dropdown-meta">
-                          <span>${escapeHtml(profile.label)}</span>
-                          <span class="dropdown-subtext">${escapeHtml(profile.roleLabel)}</span>
-                        </span>
-                      </button>
-                    `
-                  ).join("")}
-                </div>
-              `
-              : ""
-          }
+          ${renderDropdownPanel(
+            "user-switch",
+            `
+              ${USER_PROFILES.map(
+                (profile) => `
+                  <button
+                    class="dropdown-option user-switch-option ${profile.key === currentUser.key ? "is-active" : ""}"
+                    data-action="switch-user"
+                    data-value="${profile.key}"
+                    type="button"
+                    role="menuitemradio"
+                    aria-checked="${profile.key === currentUser.key ? "true" : "false"}"
+                  >
+                    <span class="avatar user-switch-option-avatar">${escapeHtml(profile.avatar)}</span>
+                    <span class="dropdown-meta">
+                      <span>${escapeHtml(profile.label)}</span>
+                      <span class="dropdown-subtext">${escapeHtml(profile.roleLabel)}</span>
+                    </span>
+                  </button>
+                `
+              ).join("")}
+            `,
+            "dropdown-panel user-switch-panel",
+            'role="menu" aria-label="角色切换"'
+          )}
         </div>
       </div>
     </header>
@@ -3959,11 +4178,11 @@ function renderCompletedFilterRow() {
 }
 
 function renderRowMenu(goal) {
-  if (state.openRowMenu !== goal.id) {
-    return "";
-  }
-  return `
-    <div class="row-menu">
+  return renderTransientPanel(
+    "row-menu",
+    goal.id,
+    state.openRowMenu === goal.id,
+    `
       ${
         goal.stage === "executing"
           ? `<button class="dropdown-option" data-action="request-advance" data-value="${goal.id}" type="button">推进评分</button>`
@@ -3978,8 +4197,9 @@ function renderRowMenu(goal) {
           : ""
       }
       <button class="dropdown-option danger" data-action="request-delete" data-value="${goal.id}" type="button">删除</button>
-    </div>
-  `;
+    `,
+    "row-menu"
+  );
 }
 
 function renderEmptyState(message) {
@@ -4763,34 +4983,42 @@ function renderGoalConfigViewCells(goal, kr) {
 }
 
 function renderGoalConfigCardMenu(goal) {
-  if (state.goalConfig.cardMenuId !== goal.id) {
-    return "";
-  }
-  return `
-    <div class="goal-config-card-menu dropdown-panel">
+  return renderTransientPanel(
+    "goal-config-card-menu",
+    goal.id,
+    state.goalConfig.cardMenuId === goal.id,
+    `
       <button class="dropdown-option" data-action="goal-config-copy" data-value="${goal.id}" type="button">复制目标</button>
       <button class="dropdown-option" data-action="goal-config-transfer" data-value="${goal.id}" type="button">转移目标</button>
       <button class="dropdown-option" data-action="goal-config-record" data-value="${goal.id}" type="button">目标记录</button>
       <button class="dropdown-option danger" data-action="goal-config-delete" data-value="${goal.id}" type="button">删除目标</button>
-    </div>
-  `;
+    `,
+    "goal-config-card-menu dropdown-panel"
+  );
 }
 
 function renderGoalConfigGroupMenu(group) {
-  if (state.goalConfig.groupMenuId !== group.id || group.kind === "all") {
+  if (group.kind === "all") {
     return "";
   }
   if (group.kind === "recycle") {
-    return `
-      <div class="goal-config-group-menu dropdown-panel">
+    return renderTransientPanel(
+      "goal-config-group-menu",
+      group.id,
+      state.goalConfig.groupMenuId === group.id,
+      `
         <button class="dropdown-option" data-action="goal-config-transfer-group-goal" data-value="${group.id}" type="button">转移目标</button>
         <button class="dropdown-option danger" data-action="goal-config-empty-recycle" type="button">清空周转箱</button>
-      </div>
-    `;
+      `,
+      "goal-config-group-menu dropdown-panel"
+    );
   }
   const canAddChild = getGoalConfigGroupLevel(group) < GOAL_CONFIG_MAX_DEPTH;
-  return `
-    <div class="goal-config-group-menu dropdown-panel">
+  return renderTransientPanel(
+    "goal-config-group-menu",
+    group.id,
+    state.goalConfig.groupMenuId === group.id,
+    `
       <button class="dropdown-option" data-action="goal-config-transfer-group-goal" data-value="${group.id}" type="button">转移目标</button>
       ${
         canAddChild
@@ -4799,8 +5027,9 @@ function renderGoalConfigGroupMenu(group) {
       }
       <button class="dropdown-option" data-action="goal-config-rename-group" data-value="${group.id}" type="button">重命名分组</button>
       <button class="dropdown-option danger" data-action="goal-config-delete-group" data-value="${group.id}" type="button">删除分组</button>
-    </div>
-  `;
+    `,
+    "goal-config-group-menu dropdown-panel"
+  );
 }
 
 function renderGoalConfigTreeRow(group) {
@@ -4897,21 +5126,18 @@ function renderGoalConfigToolbar() {
             <span class="truncate">${escapeHtml(typeLabel)}</span>
             ${renderGoalConfigSelectArrow()}
           </button>
-          ${
-            state.openDropdown === "goal-config-type"
-              ? `
-                <div class="dropdown-panel">
-                  ${GOAL_CONFIG_TYPE_OPTIONS.map(
-                    (option) => `
-                      <button class="dropdown-option ${state.goalConfig.type === option.key ? "is-active" : ""}" data-action="set-goal-config-type-filter" data-value="${option.key}" type="button">
-                        ${option.label}
-                      </button>
-                    `
-                  ).join("")}
-                </div>
-              `
-              : ""
-          }
+          ${renderDropdownPanel(
+            "goal-config-type",
+            `
+              ${GOAL_CONFIG_TYPE_OPTIONS.map(
+                (option) => `
+                  <button class="dropdown-option ${state.goalConfig.type === option.key ? "is-active" : ""}" data-action="set-goal-config-type-filter" data-value="${option.key}" type="button">
+                    ${option.label}
+                  </button>
+                `
+              ).join("")}
+            `
+          )}
         </div>
       </div>
 
@@ -4920,15 +5146,13 @@ function renderGoalConfigToolbar() {
           <button class="goal-config-icon-button goal-config-toolbar-more-button" data-action="toggle-goal-config-dropdown" data-value="goal-config-toolbar" type="button" aria-label="更多操作">
             <span class="goal-config-toolbar-more-rotator">${renderGoalConfigToolbarMoreIcon()}</span>
           </button>
-          ${
-            state.openDropdown === "goal-config-toolbar"
-              ? `
-                <div class="dropdown-panel goal-config-toolbar-menu">
-                  <button class="dropdown-option" data-action="goal-config-export" type="button">导出目标</button>
-                </div>
-              `
-              : ""
-          }
+          ${renderDropdownPanel(
+            "goal-config-toolbar",
+            `
+              <button class="dropdown-option" data-action="goal-config-export" type="button">导出目标</button>
+            `,
+            "dropdown-panel goal-config-toolbar-menu"
+          )}
         </div>
         <div class="goal-config-create-wrap">
           <div class="goal-config-create-button" role="group" aria-label="创建目标">
@@ -4943,16 +5167,14 @@ function renderGoalConfigToolbar() {
               ${renderGoalConfigCreateArrowIcon()}
             </button>
           </div>
-          ${
-            state.openDropdown === "goal-config-create"
-              ? `
-                <div class="dropdown-panel goal-config-create-menu">
-                  <button class="dropdown-option" data-action="goal-config-import" type="button">导入目标</button>
-                  <button class="dropdown-option" data-action="goal-config-ai-template" type="button">AI 模版库</button>
-                </div>
-              `
-              : ""
-          }
+          ${renderDropdownPanel(
+            "goal-config-create",
+            `
+              <button class="dropdown-option" data-action="goal-config-import" type="button">导入目标</button>
+              <button class="dropdown-option" data-action="goal-config-ai-template" type="button">AI 模版库</button>
+            `,
+            "dropdown-panel goal-config-create-menu"
+          )}
         </div>
       </div>
     </div>
@@ -5133,28 +5355,26 @@ function renderGoalConfigEditingCard() {
             </span>
             ${renderGoalConfigSelectArrow()}
           </button>
-          ${
-            state.openDropdown === "goal-config-align"
-              ? `
-                <div class="dropdown-panel goal-config-inline-menu">
-                  <button class="dropdown-option ${!draft.alignedGoal ? "is-active" : ""}" data-action="set-goal-config-draft-align" data-value="" type="button">未设置对齐目标</button>
-                  ${
-                    alignOptions.length
-                      ? alignOptions
-                          .map(
-                            (option) => `
-                              <button class="dropdown-option ${activeAlignOption?.id === option.id ? "is-active" : ""}" data-action="set-goal-config-draft-align" data-value="${option.id}" type="button">
-                                ${escapeHtml(option.title)}
-                              </button>
-                            `
-                          )
-                          .join("")
-                      : '<div class="member-heading">暂无可选择的对齐目标</div>'
-                  }
-                </div>
-              `
-              : ""
-          }
+          ${renderDropdownPanel(
+            "goal-config-align",
+            `
+              <button class="dropdown-option ${!draft.alignedGoal ? "is-active" : ""}" data-action="set-goal-config-draft-align" data-value="" type="button">未设置对齐目标</button>
+              ${
+                alignOptions.length
+                  ? alignOptions
+                      .map(
+                        (option) => `
+                          <button class="dropdown-option ${activeAlignOption?.id === option.id ? "is-active" : ""}" data-action="set-goal-config-draft-align" data-value="${option.id}" type="button">
+                            ${escapeHtml(option.title)}
+                          </button>
+                        `
+                      )
+                      .join("")
+                  : '<div class="member-heading">暂无可选择的对齐目标</div>'
+              }
+            `,
+            "dropdown-panel goal-config-inline-menu"
+          )}
         </div>
         ${renderGoalConfigMetricHead(draft.type)}
       </div>
@@ -5198,21 +5418,21 @@ function renderGoalConfigEditingCard() {
                 : ""
             }
             ${
-              state.openDropdown === "goal-config-executors"
-                ? `
-                  <div class="dropdown-panel member-dropdown goal-config-executor-menu">
-                    <div class="member-heading">选择可执行当前目标的成员</div>
-                    ${GOAL_CONFIG_EXECUTOR_OPTIONS.map(
-                      (option) => `
-                        <button class="dropdown-option" data-action="toggle-goal-config-executor" data-value="${option.id}" type="button">
-                          ${renderCheckboxIndicator((draft.executors || []).includes(option.id) ? "checked" : "unchecked")}
-                          <span>${escapeHtml(option.label)}</span>
-                        </button>
-                      `
-                    ).join("")}
-                  </div>
+              renderDropdownPanel(
+                "goal-config-executors",
                 `
-                : ""
+                  <div class="member-heading">选择可执行当前目标的成员</div>
+                  ${GOAL_CONFIG_EXECUTOR_OPTIONS.map(
+                    (option) => `
+                      <button class="dropdown-option" data-action="toggle-goal-config-executor" data-value="${option.id}" type="button">
+                        ${renderCheckboxIndicator((draft.executors || []).includes(option.id) ? "checked" : "unchecked")}
+                        <span>${escapeHtml(option.label)}</span>
+                      </button>
+                    `
+                  ).join("")}
+                `,
+                "dropdown-panel member-dropdown goal-config-executor-menu"
+              )
             }
           </div>
         </div>
@@ -5225,21 +5445,19 @@ function renderGoalConfigEditingCard() {
                 <span class="truncate">${escapeHtml(draft.flow || getDefaultGoalConfigFlow())}</span>
                 ${renderGoalConfigSelectArrow()}
               </button>
-              ${
-                state.openDropdown === "goal-config-flow"
-                  ? `
-                    <div class="dropdown-panel goal-config-inline-menu">
-                      ${getGoalConfigFlowOptions().map(
-                        (option) => `
-                          <button class="dropdown-option ${draft.flow === option ? "is-active" : ""}" data-action="set-goal-config-draft-flow" data-value="${option}" type="button">
-                            ${option}
-                          </button>
-                        `
-                      ).join("")}
-                    </div>
-                  `
-                  : ""
-              }
+              ${renderDropdownPanel(
+                "goal-config-flow",
+                `
+                  ${getGoalConfigFlowOptions().map(
+                    (option) => `
+                      <button class="dropdown-option ${draft.flow === option ? "is-active" : ""}" data-action="set-goal-config-draft-flow" data-value="${option}" type="button">
+                        ${option}
+                      </button>
+                    `
+                  ).join("")}
+                `,
+                "dropdown-panel goal-config-inline-menu"
+              )}
             </div>
           </div>
         </div>
@@ -5287,11 +5505,11 @@ function renderGoalConfigProcessTag(process) {
 }
 
 function renderGoalConfigProcessRowMenu(process) {
-  if (state.goalConfig.processMenuId !== process.id) {
-    return "";
-  }
-  return `
-    <div class="goal-config-process-menu dropdown-panel">
+  return renderTransientPanel(
+    "goal-config-process-menu",
+    process.id,
+    state.goalConfig.processMenuId === process.id,
+    `
       <button class="dropdown-option" data-action="goal-config-process-batch-apply" data-value="${process.id}" type="button">批量套用</button>
       <button class="dropdown-option" data-action="goal-config-process-rename" data-value="${process.id}" type="button">编辑名称</button>
       ${
@@ -5304,8 +5522,9 @@ function renderGoalConfigProcessRowMenu(process) {
           ? ""
           : `<button class="dropdown-option danger" data-action="goal-config-process-delete" data-value="${process.id}" type="button">删除流程</button>`
       }
-    </div>
-  `;
+    `,
+    "goal-config-process-menu dropdown-panel"
+  );
 }
 
 function renderGoalConfigProcessToolbar() {
@@ -5340,19 +5559,16 @@ function renderGoalConfigProcessPagination(processes, totalPages, currentPage) {
           <span>${state.pageSize} / 页</span>
           ${renderArrow("down", "ui-arrow-xs")}
         </button>
-        ${
-          state.openDropdown === "goal-config-process-page-size"
-            ? `
-              <div class="dropdown-panel">
-                ${PAGE_SIZE_OPTIONS.map(
-                  (item) => `
-                    <button class="dropdown-option ${state.pageSize === item ? "is-active" : ""}" data-action="set-goal-config-process-page-size" data-value="${item}" type="button">${item} / 页</button>
-                  `
-                ).join("")}
-              </div>
-            `
-            : ""
-        }
+        ${renderDropdownPanel(
+          "goal-config-process-page-size",
+          `
+            ${PAGE_SIZE_OPTIONS.map(
+              (item) => `
+                <button class="dropdown-option ${state.pageSize === item ? "is-active" : ""}" data-action="set-goal-config-process-page-size" data-value="${item}" type="button">${item} / 页</button>
+              `
+            ).join("")}
+          `
+        )}
       </div>
     </div>
   `;
@@ -6014,28 +6230,26 @@ function renderGoalConfigTransferModalInner(overlay) {
               <span class="truncate">${escapeHtml(selectedSummary)}</span>
               ${renderGoalConfigSelectArrow()}
             </button>
-            ${
-              state.openDropdown === "goal-config-transfer-goal"
-                ? `
-                  <div class="dropdown-panel goal-config-inline-menu goal-config-transfer-menu">
-                    ${
-                      sourceGoals.length
-                        ? sourceGoals
-                            .map(
-                              (item) => `
-                                <button class="dropdown-option ${selectedGoalIds.has(item.id) ? "is-active" : ""}" data-action="toggle-goal-config-transfer-goal" data-value="${item.id}" type="button">
-                                  ${renderCheckboxIndicator(selectedGoalIds.has(item.id) ? "checked" : "unchecked")}
-                                  <span class="truncate">${escapeHtml(item.title)}</span>
-                                </button>
-                              `
-                            )
-                            .join("")
-                        : '<div class="member-heading">暂无可转移目标</div>'
-                    }
-                  </div>
-                `
-                : ""
-            }
+            ${renderDropdownPanel(
+              "goal-config-transfer-goal",
+              `
+                ${
+                  sourceGoals.length
+                    ? sourceGoals
+                        .map(
+                          (item) => `
+                            <button class="dropdown-option ${selectedGoalIds.has(item.id) ? "is-active" : ""}" data-action="toggle-goal-config-transfer-goal" data-value="${item.id}" type="button">
+                              ${renderCheckboxIndicator(selectedGoalIds.has(item.id) ? "checked" : "unchecked")}
+                              <span class="truncate">${escapeHtml(item.title)}</span>
+                            </button>
+                          `
+                        )
+                        .join("")
+                    : '<div class="member-heading">暂无可转移目标</div>'
+                }
+              `,
+              "dropdown-panel goal-config-inline-menu goal-config-transfer-menu"
+            )}
           </div>
         </div>
         <div class="goal-config-transfer-field">
@@ -6052,27 +6266,25 @@ function renderGoalConfigTransferModalInner(overlay) {
               <span class="truncate">${escapeHtml(activeOption ? activeOption.label : "暂无可转移分组")}</span>
               ${renderGoalConfigSelectArrow()}
             </button>
-            ${
-              state.openDropdown === "goal-config-transfer-group"
-                ? `
-                  <div class="dropdown-panel goal-config-inline-menu goal-config-transfer-menu">
-                    ${
-                      options.length
-                        ? options
-                            .map(
-                              (item) => `
-                                <button class="dropdown-option ${activeOption?.id === item.id ? "is-active" : ""}" data-action="set-goal-config-transfer-group" data-value="${item.id}" type="button">
-                                  ${escapeHtml(item.label)}
-                                </button>
-                              `
-                            )
-                            .join("")
-                        : '<div class="member-heading">暂无可转移分组</div>'
-                    }
-                  </div>
-                `
-                : ""
-            }
+            ${renderDropdownPanel(
+              "goal-config-transfer-group",
+              `
+                ${
+                  options.length
+                    ? options
+                        .map(
+                          (item) => `
+                            <button class="dropdown-option ${activeOption?.id === item.id ? "is-active" : ""}" data-action="set-goal-config-transfer-group" data-value="${item.id}" type="button">
+                              ${escapeHtml(item.label)}
+                            </button>
+                          `
+                        )
+                        .join("")
+                    : '<div class="member-heading">暂无可转移分组</div>'
+                }
+              `,
+              "dropdown-panel goal-config-inline-menu goal-config-transfer-menu"
+            )}
           </div>
           <div class="goal-config-transfer-hint">支持转移到其他自定义分组，也支持移入或移出周转箱。</div>
         </div>
@@ -6100,6 +6312,7 @@ function syncGoalConfigTransferModal() {
 
   modal.innerHTML = renderGoalConfigTransferModalInner(state.overlay);
   flushDropdownChevronAnimations();
+  scheduleDropdownMotionStateCleanup();
 
   modal.querySelectorAll(".goal-config-transfer-menu").forEach((menu, index) => {
     if (menu instanceof HTMLElement) {
@@ -6153,19 +6366,17 @@ function renderStartGoalModalInner(overlay) {
               <span>${escapeHtml(nextOverlay.period)}</span>
               ${renderStartGoalChevronIcon()}
             </button>
-            ${
-              state.openDropdown === "start-goal-period"
-                ? `
-                  <div class="dropdown-panel start-goal-dropdown">
-                    ${START_GOAL_PERIOD_OPTIONS.map(
-                      (item) => `
-                        <button class="dropdown-option ${nextOverlay.period === item ? "is-active" : ""}" data-action="set-start-goal-period" data-value="${item}" type="button">${item}</button>
-                      `
-                    ).join("")}
-                  </div>
-                `
-                : ""
-            }
+            ${renderDropdownPanel(
+              "start-goal-period",
+              `
+                ${START_GOAL_PERIOD_OPTIONS.map(
+                  (item) => `
+                    <button class="dropdown-option ${nextOverlay.period === item ? "is-active" : ""}" data-action="set-start-goal-period" data-value="${item}" type="button">${item}</button>
+                  `
+                ).join("")}
+              `,
+              "dropdown-panel start-goal-dropdown"
+            )}
           </div>
         </div>
       </div>
@@ -6178,21 +6389,19 @@ function renderStartGoalModalInner(overlay) {
                 <span class="truncate">${escapeHtml(groupLabel)}</span>
                 ${renderStartGoalChevronIcon()}
               </button>
-              ${
-                state.openDropdown === "start-goal-group"
-                  ? `
-                    <div class="dropdown-panel start-goal-dropdown">
-                      ${groupOptions
-                        .map(
-                          (item) => `
-                            <button class="dropdown-option ${nextOverlay.groupId === item.id ? "is-active" : ""}" data-action="set-start-goal-group" data-value="${item.id}" type="button">${escapeHtml(item.label)}</button>
-                          `
-                        )
-                        .join("")}
-                    </div>
-                  `
-                  : ""
-              }
+              ${renderDropdownPanel(
+                "start-goal-group",
+                `
+                  ${groupOptions
+                    .map(
+                      (item) => `
+                        <button class="dropdown-option ${nextOverlay.groupId === item.id ? "is-active" : ""}" data-action="set-start-goal-group" data-value="${item.id}" type="button">${escapeHtml(item.label)}</button>
+                      `
+                    )
+                    .join("")}
+                `,
+                "dropdown-panel start-goal-dropdown"
+              )}
             </div>
           </div>
           <div class="start-goal-card-list">
@@ -6271,6 +6480,7 @@ function syncStartGoalModal() {
 
   modal.innerHTML = renderStartGoalModalInner(state.overlay);
   flushDropdownChevronAnimations();
+  scheduleDropdownMotionStateCleanup();
   modal.querySelectorAll(".start-goal-card-list").forEach((list, index) => {
     if (list instanceof HTMLElement) {
       list.scrollTop = listScrollTops[index] || 0;
@@ -6397,7 +6607,7 @@ function openGoalView(goalId, tabKey = getTabKey()) {
     return;
   }
 
-  state.openRowMenu = null;
+  setRowMenuOpenState(null);
   state.overlay =
     currentTab === "completed" || goal.stage === "executing"
       ? { type: "goal-modal", goalId, tabKey: currentTab }
@@ -6548,7 +6758,7 @@ function applyAdvance(goalIds, tabKey = getTabKey()) {
   state.pendingGoals = [...ratingTasks, ...state.pendingGoals.filter((goal) => !targets.has(goal.id))];
   setActiveSelection([], tabKey);
   state.overlay = null;
-  state.openRowMenu = null;
+  setRowMenuOpenState(null);
   showToast("目标已推进到评分审批");
 }
 
@@ -6570,7 +6780,7 @@ function applyDelete(goalIds, tabKey = getTabKey()) {
   removeGoalInstanceEverywhere(goalIds);
   setActiveSelection([], tabKey);
   state.overlay = null;
-  state.openRowMenu = null;
+  setRowMenuOpenState(null);
   showToast("目标已删除");
 }
 
@@ -6635,8 +6845,8 @@ function applyPendingApproval(goalIds, toastMessage) {
   state.pendingGoals = state.pendingGoals.filter((goal) => !targets.has(goal.id));
   state.myGoals.selectionByTab.pending = (state.myGoals.selectionByTab.pending || []).filter((id) => !targets.has(id));
   state.overlay = null;
-  state.openDropdown = null;
-  state.openRowMenu = null;
+  setDropdownOpenState(null);
+  setRowMenuOpenState(null);
   showToast(toastMessage || `已批量通过 ${pendingGoals.length} 个待处理目标`);
   return pendingGoals.length;
 }
@@ -6687,8 +6897,8 @@ function applyPendingRejection(goalIds, toastMessage) {
   state.pendingGoals = state.pendingGoals.filter((goal) => !targets.has(goal.id));
   state.myGoals.selectionByTab.pending = (state.myGoals.selectionByTab.pending || []).filter((id) => !targets.has(id));
   state.overlay = null;
-  state.openDropdown = null;
-  state.openRowMenu = null;
+  setDropdownOpenState(null);
+  setRowMenuOpenState(null);
   showToast(toastMessage || `已批量拒绝 ${pendingGoals.length} 个待处理目标`);
   return pendingGoals.length;
 }
@@ -6819,8 +7029,8 @@ function confirmStartGoal() {
   state.activeTab = "ongoing";
   setActivePage(1, "ongoing");
   setActiveSelection([], "ongoing");
-  state.openDropdown = null;
-  state.openRowMenu = null;
+  setDropdownOpenState(null);
+  setRowMenuOpenState(null);
   if (isLaunchAdvanceGuideStep(4)) {
     setConfigPrepGuideStep(5);
   }
@@ -6865,7 +7075,7 @@ function confirmGoalConfigTransfer() {
     ...new Set([...state.goalConfig.expandedGroupIds, ...getGoalConfigAncestors(targetGroup.id)]),
   ];
   state.overlay = null;
-  state.openDropdown = null;
+  setDropdownOpenState(null);
   clearGoalConfigPanels();
   showToast(
     selectedGoals.length === 1
@@ -6918,14 +7128,14 @@ function startGoalConfigEditing(goal) {
   state.goalConfig.editingGoalId = goal.id;
   state.goalConfig.editingDraft = createGoalConfigDraft(goal);
   clearGoalConfigPanels();
-  state.openDropdown = null;
+  setDropdownOpenState(null);
   state.overlay = null;
 }
 
 function clearGoalConfigEditing() {
   state.goalConfig.editingGoalId = null;
   state.goalConfig.editingDraft = null;
-  state.openDropdown = null;
+  setDropdownOpenState(null);
 }
 
 function createGoalConfigGroup(parentId = null) {
@@ -7177,6 +7387,7 @@ function render(preserveFocus) {
   `;
 
   flushDropdownChevronAnimations();
+  scheduleDropdownMotionStateCleanup();
 
   persistState();
   syncToast();
@@ -7259,7 +7470,7 @@ function onAction(action, value, target) {
         return;
       }
 
-      state.openDropdown = null;
+      setDropdownOpenState(null);
       animateSidebarGroupToggle(value);
       return;
     }
@@ -7301,7 +7512,7 @@ function onAction(action, value, target) {
     case "toggle-dropdown": {
       const shouldCompleteGuideUsagePrompt = isGuideMenuGuideStep(1) && value === "help-menu";
       toggleDropdownOpenState(value);
-      state.openRowMenu = null;
+      setRowMenuOpenState(null);
       if (shouldCompleteGuideUsagePrompt) {
         closeConfigPrepGuide(true);
       }
@@ -7316,7 +7527,7 @@ function onAction(action, value, target) {
       break;
     case "toggle-my-goal-dropdown":
       toggleDropdownOpenState(value);
-      state.openRowMenu = null;
+      setRowMenuOpenState(null);
       break;
     case "set-my-goal-tab":
       state.myGoals.activeTab = value;
@@ -7341,7 +7552,7 @@ function onAction(action, value, target) {
       state.goalConfig.selectedGroupId = value;
       cancelGoalConfigGroupEditing();
       clearGoalConfigPanels();
-      state.openDropdown = null;
+      setDropdownOpenState(null);
       clearGoalConfigEditing();
       break;
     case "goal-config-toggle-group":
@@ -7354,7 +7565,7 @@ function onAction(action, value, target) {
     case "toggle-goal-config-dropdown":
       toggleDropdownOpenState(value);
       clearGoalConfigPanels();
-      state.openRowMenu = null;
+      setRowMenuOpenState(null);
       if (
         state.overlay?.type === "goal-config-transfer" &&
         (value === "goal-config-transfer-goal" || value === "goal-config-transfer-group")
@@ -7365,18 +7576,18 @@ function onAction(action, value, target) {
       break;
     case "set-goal-config-type-filter":
       state.goalConfig.type = GOAL_CONFIG_TYPE_OPTIONS.some((option) => option.key === value) ? value : "all";
-      state.openDropdown = null;
+      setDropdownOpenState(null);
       clearGoalConfigEditing();
       break;
     case "goal-config-toggle-card-menu":
-      state.goalConfig.cardMenuId = state.goalConfig.cardMenuId === value ? null : value;
-      state.goalConfig.groupMenuId = null;
-      state.openDropdown = null;
+      setGoalConfigCardMenuId(state.goalConfig.cardMenuId === value ? null : value);
+      setGoalConfigGroupMenuId(null);
+      setDropdownOpenState(null);
       break;
     case "goal-config-toggle-group-menu":
-      state.goalConfig.groupMenuId = state.goalConfig.groupMenuId === value ? null : value;
-      state.goalConfig.cardMenuId = null;
-      state.openDropdown = null;
+      setGoalConfigGroupMenuId(state.goalConfig.groupMenuId === value ? null : value);
+      setGoalConfigCardMenuId(null);
+      setDropdownOpenState(null);
       break;
     case "goal-config-edit": {
       const goal = getGoalConfigGoal(value);
@@ -7391,7 +7602,7 @@ function onAction(action, value, target) {
       state.goalConfig.editingDraft = draft;
       state.goalConfig.selectedGroupId = draft.groupId;
       clearGoalConfigPanels();
-      state.openDropdown = null;
+      setDropdownOpenState(null);
       if (isConfigPrepGuideStep(8)) {
         advanceConfigPrepGuide(9);
       }
@@ -7406,7 +7617,7 @@ function onAction(action, value, target) {
       state.goalConfig.editingGoalId = draft.id;
       state.goalConfig.editingDraft = draft;
       clearGoalConfigPanels();
-      state.openDropdown = null;
+      setDropdownOpenState(null);
       showToast("已载入导入模板，可继续编辑");
       break;
     }
@@ -7419,12 +7630,12 @@ function onAction(action, value, target) {
       state.goalConfig.editingGoalId = draft.id;
       state.goalConfig.editingDraft = draft;
       clearGoalConfigPanels();
-      state.openDropdown = null;
+      setDropdownOpenState(null);
       showToast("已载入 AI 模板，可继续编辑");
       break;
     }
     case "goal-config-export":
-      state.openDropdown = null;
+      setDropdownOpenState(null);
       showToast("已模拟导出目标库");
       break;
     case "goal-config-save":
@@ -7452,7 +7663,7 @@ function onAction(action, value, target) {
         const targetGoal = value ? getGoalConfigGoal(value) : null;
         if (value && isGoalConfigMutualAlignBlocked(state.goalConfig.editingDraft, targetGoal)) {
           showToast("所选目标已对齐当前目标，不能互相对齐");
-          state.openDropdown = null;
+          setDropdownOpenState(null);
           break;
         }
         const alignedGoal = value ? getGoalConfigGoal(value)?.title || value : "";
@@ -7460,7 +7671,7 @@ function onAction(action, value, target) {
           ...state.goalConfig.editingDraft,
           alignedGoal,
         };
-        state.openDropdown = null;
+        setDropdownOpenState(null);
       }
       break;
     case "set-goal-config-draft-flow":
@@ -7469,7 +7680,7 @@ function onAction(action, value, target) {
           ...state.goalConfig.editingDraft,
           flow: value,
         };
-        state.openDropdown = null;
+        setDropdownOpenState(null);
       }
       break;
     case "toggle-goal-config-executor":
@@ -7485,7 +7696,7 @@ function onAction(action, value, target) {
           executors: [...currentExecutors],
         };
         if (isConfigPrepGuideStep(10) && state.goalConfig.editingDraft.executors.length) {
-          state.openDropdown = null;
+          setDropdownOpenState(null);
           advanceConfigPrepGuide(11);
         }
       }
@@ -7537,7 +7748,7 @@ function onAction(action, value, target) {
     case "goal-config-transfer": {
       const overlay = buildGoalConfigTransferOverlay(value);
       clearGoalConfigPanels();
-      state.openDropdown = null;
+      setDropdownOpenState(null);
       if (!overlay || !overlay.targetGroupId) {
         showToast("暂无可转移的分组");
         break;
@@ -7548,7 +7759,7 @@ function onAction(action, value, target) {
     case "goal-config-transfer-group-goal": {
       const overlay = buildGoalConfigGroupTransferOverlay(value);
       clearGoalConfigPanels();
-      state.openDropdown = null;
+      setDropdownOpenState(null);
       if (!overlay || !overlay.targetGroupId) {
         showToast("当前分组暂无可转移目标");
         break;
@@ -7579,7 +7790,7 @@ function onAction(action, value, target) {
     case "set-goal-config-transfer-group":
       if (state.overlay && state.overlay.type === "goal-config-transfer") {
         state.overlay = { ...state.overlay, targetGroupId: value };
-        state.openDropdown = null;
+        setDropdownOpenState(null);
         syncGoalConfigTransferModal();
         return;
       }
@@ -7622,7 +7833,7 @@ function onAction(action, value, target) {
         processName: "",
       };
       clearGoalConfigPanels();
-      state.openDropdown = null;
+      setDropdownOpenState(null);
       if (isConfigPrepGuideStep(3)) {
         advanceConfigPrepGuide(4);
       }
@@ -7683,8 +7894,8 @@ function onAction(action, value, target) {
       break;
     }
     case "toggle-goal-config-process-menu":
-      state.goalConfig.processMenuId = state.goalConfig.processMenuId === value ? null : value;
-      state.openDropdown = null;
+      setGoalConfigProcessMenuId(state.goalConfig.processMenuId === value ? null : value);
+      setDropdownOpenState(null);
       break;
     case "goal-config-process-edit-confirm":
       beginGoalConfigProcessEdit(value, "confirm");
@@ -7738,7 +7949,7 @@ function onAction(action, value, target) {
       if (process) {
         state.goalConfig.processEditingId = process.id;
         state.goalConfig.processEditingName = process.name;
-        state.goalConfig.processMenuId = null;
+        setGoalConfigProcessMenuId(null);
       }
       break;
     }
@@ -7774,7 +7985,7 @@ function onAction(action, value, target) {
     case "set-goal-config-process-page-size":
       state.pageSize = Number(value);
       setGoalConfigProcessPage(1);
-      state.openDropdown = null;
+      setDropdownOpenState(null);
       break;
     case "set-my-goal-period":
       getMyGoalFilters(myGoalTab).period = value;
@@ -7839,7 +8050,7 @@ function onAction(action, value, target) {
     case "set-my-goal-page-size":
       state.pageSize = Number(value);
       setMyGoalPage(1, myGoalTab);
-      state.openDropdown = null;
+      setDropdownOpenState(null);
       break;
     case "set-period":
       filters.period = value;
@@ -7852,6 +8063,8 @@ function onAction(action, value, target) {
         filters.members = [...filters.members, value];
       }
       resetListState(tabKey);
+      clearClosingDropdown("members");
+      openingDropdownKeys.delete("members");
       state.openDropdown = "members";
       break;
     case "set-stage":
@@ -7884,8 +8097,8 @@ function onAction(action, value, target) {
       break;
     }
     case "toggle-row-menu":
-      state.openDropdown = null;
-      state.openRowMenu = state.openRowMenu === value ? null : value;
+      setDropdownOpenState(null);
+      setRowMenuOpenState(state.openRowMenu === value ? null : value);
       break;
     case "view-goal":
       openGoalView(value, tabKey);
@@ -7955,7 +8168,7 @@ function onAction(action, value, target) {
         selectedIds: [],
         groupId: "all",
       });
-      state.openDropdown = null;
+      setDropdownOpenState(null);
       if (isLaunchAdvanceGuideStep(2)) {
         advanceConfigPrepGuide(3);
       }
@@ -7963,7 +8176,7 @@ function onAction(action, value, target) {
     case "set-start-goal-period":
       if (state.overlay && state.overlay.type === "start-goal") {
         state.overlay = { ...state.overlay, period: value };
-        state.openDropdown = null;
+        setDropdownOpenState(null);
         syncStartGoalModal();
         return;
       }
@@ -7971,7 +8184,7 @@ function onAction(action, value, target) {
     case "set-start-goal-group":
       if (state.overlay && state.overlay.type === "start-goal") {
         state.overlay = { ...state.overlay, groupId: value };
-        state.openDropdown = null;
+        setDropdownOpenState(null);
         syncStartGoalModal();
         return;
       }
@@ -8036,7 +8249,7 @@ function onAction(action, value, target) {
     case "set-page-size":
       state.pageSize = Number(value);
       setActivePage(1, tabKey);
-      state.openDropdown = null;
+      setDropdownOpenState(null);
       break;
     case "set-tab":
       state.activeTab = value;
@@ -8098,7 +8311,7 @@ document.addEventListener("click", (event) => {
   }
 
   if (!event.target.closest(".row-menu") && !event.target.closest(".row-menu-trigger") && state.openRowMenu) {
-    state.openRowMenu = null;
+    setRowMenuOpenState(null);
     render();
     return;
   }
@@ -8403,7 +8616,7 @@ document.addEventListener("animationend", (event) => {
     return;
   }
 
-  scheduleConfigPrepGuideSync();
+  scheduleConfigPrepGuideSync(true);
 });
 
 render();
