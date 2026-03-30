@@ -1262,9 +1262,34 @@ function normalizeState(nextState) {
   const activePage = getAccessiblePage(current.activePage, currentUserProfile);
   const ongoingGoalIds = new Set(current.goals.map((goal) => goal.id));
   const completedGoalIds = new Set(current.completedGoals.map((goal) => goal.id));
-  const processIds = new Set((current.goalConfigProcesses || clone(DEFAULT_GOAL_CONFIG_PROCESSES)).map((item) => item.id));
   const normalizedGoalConfigGroups = sanitizeGoalConfigGroups(current.goalConfigGroups);
   const normalizedGoalConfigGroupIds = new Set(normalizedGoalConfigGroups.map((group) => group.id));
+  const normalizedGoalConfigProcesses = sortGoalConfigProcesses(
+    Array.isArray(current.goalConfigProcesses) && current.goalConfigProcesses.length
+      ? current.goalConfigProcesses
+      : clone(DEFAULT_GOAL_CONFIG_PROCESSES)
+  );
+  const normalizedGoalConfigProcessIds = new Set(normalizedGoalConfigProcesses.map((item) => item.id));
+  const normalizedGoalConfigProcessNameMap = new Map();
+  normalizedGoalConfigProcesses.forEach((process) => {
+    const name = normalizeProcessName(process.name);
+    if (name && !normalizedGoalConfigProcessNameMap.has(name)) {
+      normalizedGoalConfigProcessNameMap.set(name, process.id);
+    }
+  });
+  const normalizedGoalConfigGoalSource = Array.isArray(current.goalConfigGoals)
+    ? current.goalConfigGoals
+    : clone(DEFAULT_GOAL_CONFIG_GOALS);
+  const normalizedGoalConfigGoalIds = new Set(normalizedGoalConfigGoalSource.map((goal) => goal.id));
+  const normalizedGoalConfigGoalTitleMap = new Map();
+  normalizedGoalConfigGoalSource.forEach((goal) => {
+    const title = String(goal.title || "").trim();
+    if (title && !normalizedGoalConfigGoalTitleMap.has(title)) {
+      normalizedGoalConfigGoalTitleMap.set(title, goal.id);
+    }
+  });
+  const defaultFlowProcessId = normalizedGoalConfigProcesses[0]?.id || DEFAULT_GOAL_CONFIG_PROCESSES[0].id;
+  const defaultFlowName = normalizedGoalConfigProcesses[0]?.name || DEFAULT_GOAL_CONFIG_PROCESSES[0].name;
   const normalizedMyExecutingGoals = current.myExecutingGoals || clone(DEFAULT_MY_EXECUTING_GOALS);
   const normalizedMyCompletedGoals = current.myCompletedGoals || clone(DEFAULT_MY_COMPLETED_GOALS);
   const normalizedPendingGoals = (current.pendingGoals || clone(DEFAULT_PENDING_GOALS))
@@ -1291,6 +1316,49 @@ function normalizeState(nextState) {
   const pendingGoalIds = new Set(normalizedPendingGoals.map((goal) => goal.id));
   const myExecutingGoalIds = new Set(normalizedMyExecutingGoals.map((goal) => goal.id));
   const myCompletedGoalIds = new Set(normalizedMyCompletedGoals.map((goal) => goal.id));
+  const normalizedGoalConfigGoals = normalizedGoalConfigGoalSource.map((goal) => {
+    const hasFlowProcessId = Object.prototype.hasOwnProperty.call(goal, "flowProcessId");
+    const hasAlignedGoalId = Object.prototype.hasOwnProperty.call(goal, "alignedGoalId");
+    const explicitFlowProcessId = String(goal.flowProcessId || "").trim();
+    const explicitAlignedGoalId = String(goal.alignedGoalId || "").trim();
+    const legacyFlow = String(goal.flow || "").trim();
+    const legacyAlignedGoal = String(goal.alignedGoal || "").trim();
+
+    let nextFlowProcessId = "";
+    if (explicitFlowProcessId) {
+      nextFlowProcessId = normalizedGoalConfigProcessIds.has(explicitFlowProcessId)
+        ? explicitFlowProcessId
+        : defaultFlowProcessId;
+    } else if (hasFlowProcessId) {
+      nextFlowProcessId = defaultFlowProcessId;
+    } else if (legacyFlow) {
+      nextFlowProcessId = normalizedGoalConfigProcessNameMap.get(normalizeProcessName(legacyFlow)) || "";
+    }
+
+    let nextAlignedGoalId = "";
+    if (explicitAlignedGoalId) {
+      nextAlignedGoalId = normalizedGoalConfigGoalIds.has(explicitAlignedGoalId) ? explicitAlignedGoalId : "";
+    } else if (!hasAlignedGoalId && legacyAlignedGoal) {
+      nextAlignedGoalId = normalizedGoalConfigGoalTitleMap.get(legacyAlignedGoal) || "";
+    }
+
+    const nextFlowName = nextFlowProcessId
+      ? normalizedGoalConfigProcesses.find((item) => item.id === nextFlowProcessId)?.name || legacyFlow || defaultFlowName
+      : legacyFlow;
+    const nextAlignedGoalTitle = nextAlignedGoalId
+      ? normalizedGoalConfigGoalSource.find((item) => item.id === nextAlignedGoalId)?.title || legacyAlignedGoal || ""
+      : hasAlignedGoalId
+        ? ""
+        : legacyAlignedGoal;
+
+    return {
+      ...goal,
+      flowProcessId: nextFlowProcessId,
+      flow: nextFlowName,
+      alignedGoalId: nextAlignedGoalId,
+      alignedGoal: nextAlignedGoalTitle,
+    };
+  });
   return {
     ...current,
     currentUserKey,
@@ -1298,8 +1366,8 @@ function normalizeState(nextState) {
     myExecutingGoals: normalizedMyExecutingGoals,
     myCompletedGoals: normalizedMyCompletedGoals,
     goalConfigGroups: normalizedGoalConfigGroups,
-    goalConfigGoals: current.goalConfigGoals || clone(DEFAULT_GOAL_CONFIG_GOALS),
-    goalConfigProcesses: current.goalConfigProcesses || clone(DEFAULT_GOAL_CONFIG_PROCESSES),
+    goalConfigGoals: normalizedGoalConfigGoals,
+    goalConfigProcesses: normalizedGoalConfigProcesses,
     activePage,
     planNavExpanded: !!current.planNavExpanded,
     goalNavExpanded: !!current.goalNavExpanded,
@@ -2127,19 +2195,23 @@ function getFilteredGoalConfigGoals() {
   return goals;
 }
 
-function getGoalConfigAlignReferenceTitles(draft = state.goalConfig.editingDraft) {
-  const titles = new Set();
+function getGoalConfigAlignReferenceKeys(draft = state.goalConfig.editingDraft) {
+  const keys = new Set();
+  const draftId = String(draft?.id || "").trim();
   const draftTitle = String(draft?.title || "").trim();
-  const persistedTitle = draft?.id ? String(getGoalConfigGoal(draft.id)?.title || "").trim() : "";
+  const persistedTitle = draftId ? String(getGoalConfigGoal(draftId)?.title || "").trim() : "";
 
+  if (draftId) {
+    keys.add(`id:${draftId}`);
+  }
   if (draftTitle) {
-    titles.add(draftTitle);
+    keys.add(`title:${draftTitle}`);
   }
   if (persistedTitle) {
-    titles.add(persistedTitle);
+    keys.add(`title:${persistedTitle}`);
   }
 
-  return titles;
+  return keys;
 }
 
 function isGoalConfigMutualAlignBlocked(draft, candidateGoal) {
@@ -2147,12 +2219,18 @@ function isGoalConfigMutualAlignBlocked(draft, candidateGoal) {
     return false;
   }
 
+  const referenceKeys = getGoalConfigAlignReferenceKeys(draft);
+  const candidateAlignedGoalId = String(candidateGoal.alignedGoalId || "").trim();
+  if (candidateAlignedGoalId && referenceKeys.has(`id:${candidateAlignedGoalId}`)) {
+    return true;
+  }
+
   const candidateAlignedGoal = String(candidateGoal.alignedGoal || "").trim();
   if (!candidateAlignedGoal) {
     return false;
   }
 
-  return getGoalConfigAlignReferenceTitles(draft).has(candidateAlignedGoal);
+  return referenceKeys.has(`title:${candidateAlignedGoal}`);
 }
 
 function getGoalConfigAlignOptions(draft = state.goalConfig.editingDraft) {
@@ -2225,21 +2303,77 @@ function isGoalConfigStrictOrderedTriple(values) {
   );
 }
 
-function getGoalConfigFlowOptions() {
+function getGoalConfigProcesses() {
   const processes =
     Array.isArray(state.goalConfigProcesses) && state.goalConfigProcesses.length
       ? state.goalConfigProcesses
       : DEFAULT_GOAL_CONFIG_PROCESSES;
+  return sortGoalConfigProcesses(processes);
+}
 
-  const options = sortGoalConfigProcesses(processes)
-    .map((item) => item.name)
-    .filter((name, index, source) => name && source.indexOf(name) === index);
+function getGoalConfigProcessById(processId) {
+  return getGoalConfigProcesses().find((item) => item.id === processId);
+}
 
-  return options.length ? options : ["默认流程"];
+function getGoalConfigProcessName(processId, fallback = "") {
+  return getGoalConfigProcessById(processId)?.name || fallback;
+}
+
+function getGoalConfigGoalTitle(goalId, fallback = "") {
+  return getGoalConfigGoal(goalId)?.title || fallback;
+}
+
+function resolveGoalConfigFlowProcessId(flowValue) {
+  const normalizedValue = String(flowValue || "").trim();
+  if (!normalizedValue) {
+    return "";
+  }
+
+  const directMatch = getGoalConfigProcessById(normalizedValue);
+  if (directMatch) {
+    return directMatch.id;
+  }
+
+  const legacyMatch = getGoalConfigProcesses().find((item) => normalizeProcessName(item.name) === normalizedValue);
+  return legacyMatch ? legacyMatch.id : "";
+}
+
+function resolveGoalConfigAlignedGoalId(alignedGoalValue) {
+  const normalizedValue = String(alignedGoalValue || "").trim();
+  if (!normalizedValue) {
+    return "";
+  }
+
+  const directMatch = getGoalConfigGoal(normalizedValue);
+  if (directMatch) {
+    return directMatch.id;
+  }
+
+  const legacyMatch = sortGoalConfigGoals(state.goalConfigGoals).find((goal) => String(goal.title || "").trim() === normalizedValue);
+  return legacyMatch ? legacyMatch.id : "";
+}
+
+function isGoalConfigProcessNameTaken(nextName, ignoreProcessId = "") {
+  const normalizedName = normalizeProcessName(nextName);
+  if (!normalizedName) {
+    return false;
+  }
+
+  return getGoalConfigProcesses().some(
+    (item) => item.id !== ignoreProcessId && normalizeProcessName(item.name) === normalizedName
+  );
+}
+
+function getGoalConfigFlowOptions() {
+  return getGoalConfigProcesses().map((item) => ({
+    id: item.id,
+    label: item.name,
+    isDefault: !!item.isDefault,
+  }));
 }
 
 function getDefaultGoalConfigFlow() {
-  return getGoalConfigFlowOptions()[0];
+  return getGoalConfigFlowOptions()[0]?.id || DEFAULT_GOAL_CONFIG_PROCESSES[0].id;
 }
 
 function isGoalConfigPristineDraft(draft) {
@@ -2249,9 +2383,9 @@ function isGoalConfigPristineDraft(draft) {
 
   return (
     !draft.title &&
-    !draft.alignedGoal &&
+    !draft.alignedGoalId &&
     !(draft.executors || []).length &&
-    (draft.flow || getDefaultGoalConfigFlow()) === getDefaultGoalConfigFlow() &&
+    (draft.flowProcessId || getDefaultGoalConfigFlow()) === getDefaultGoalConfigFlow() &&
     (draft.krs || []).every((kr) => !kr.title && !kr.threshold && !kr.passing && !kr.challenge)
   );
 }
@@ -2262,6 +2396,44 @@ function normalizeGoalConfigDraft(draft) {
   }
 
   const next = clone(draft);
+  const defaultFlowProcessId = getDefaultGoalConfigFlow();
+  const hasFlowProcessId = Object.prototype.hasOwnProperty.call(next, "flowProcessId");
+  const hasAlignedGoalId = Object.prototype.hasOwnProperty.call(next, "alignedGoalId");
+  const resolvedFlowProcessId = resolveGoalConfigFlowProcessId(next.flowProcessId || next.flow);
+  const resolvedAlignedGoalId = resolveGoalConfigAlignedGoalId(next.alignedGoalId || next.alignedGoal);
+
+  if (resolvedFlowProcessId) {
+    next.flowProcessId = resolvedFlowProcessId;
+  } else if (hasFlowProcessId) {
+    next.flowProcessId = defaultFlowProcessId;
+  } else {
+    next.flowProcessId = "";
+  }
+
+  if (next.flowProcessId) {
+    next.flow = getGoalConfigProcessName(next.flowProcessId, String(next.flow || ""));
+  } else if (!String(next.flow || "").trim() && hasFlowProcessId) {
+    next.flow = getGoalConfigProcessName(defaultFlowProcessId);
+  } else {
+    next.flow = String(next.flow || "");
+  }
+
+  if (resolvedAlignedGoalId) {
+    next.alignedGoalId = resolvedAlignedGoalId;
+  } else if (hasAlignedGoalId) {
+    next.alignedGoalId = "";
+  } else {
+    next.alignedGoalId = "";
+  }
+
+  if (next.alignedGoalId) {
+    next.alignedGoal = getGoalConfigGoalTitle(next.alignedGoalId, String(next.alignedGoal || ""));
+  } else if (hasAlignedGoalId) {
+    next.alignedGoal = "";
+  } else {
+    next.alignedGoal = String(next.alignedGoal || "");
+  }
+
   next.krs = (next.krs && next.krs.length ? next.krs : [createGoalConfigKr(next.type, 0)]).map((kr, index) => {
     const base = {
       ...kr,
@@ -2318,9 +2490,9 @@ function createGoalConfigDraft(goal) {
       groupId: resolveGoalConfigTargetGroupId(),
       title: "",
       type: "auto",
-      alignedGoal: "",
+      alignedGoalId: "",
       executors: [],
-      flow: getDefaultGoalConfigFlow(),
+      flowProcessId: getDefaultGoalConfigFlow(),
       createdAt: new Date().toISOString(),
       isNew: true,
       krs: createGoalConfigInitialKrs("auto"),
@@ -2330,17 +2502,17 @@ function createGoalConfigDraft(goal) {
 
 function createGoalConfigTestingDraft(goal) {
   const draft = createGoalConfigDraft({
+    ...(goal || {}),
     id: goal?.id || `goal-config-testing-${Date.now()}`,
     groupId: goal?.groupId || resolveGoalConfigTargetGroupId(),
     title: "测试经营目标模板",
     type: "auto",
-    alignedGoal: "",
+    alignedGoalId: "",
     executors: clone(ALL_GOAL_CONFIG_EXECUTOR_IDS),
-    flow: getDefaultGoalConfigFlow(),
+    flowProcessId: getDefaultGoalConfigFlow(),
     createdAt: new Date().toISOString(),
     isNew: true,
     krs: [createGoalConfigKr("auto", 0), createGoalConfigKr("auto", 1)],
-    ...(goal || {}),
   });
 
   draft.krs = [
@@ -2368,20 +2540,26 @@ function createGoalConfigTestingDraft(goal) {
 function getGoalConfigLaunchGoals() {
   return sortGoalConfigGoals(state.goalConfigGoals)
     .filter((goal) => isGoalConfigLaunchReadyGoal(goal))
-    .map((goal) => ({
-      id: goal.id,
-      title: goal.title,
-      groupId: goal.groupId,
-      groupLabel: getGoalConfigGroup(goal.groupId)?.label || "全部分组",
-      type: goal.type,
-      goalType: getGoalConfigTypeLabel(goal.type),
-      alignedGoal: goal.alignedGoal || "",
-      executors: clone(goal.executors || []),
-      executorLabels: (goal.executors || []).map((item) => goalConfigExecutorLabel(item)),
-      flow: goal.flow,
-      createdAt: goal.createdAt,
-      krs: clone(goal.krs || []),
-    }));
+    .map((goal) => {
+      const alignedGoalId = goal.alignedGoalId || resolveGoalConfigAlignedGoalId(goal.alignedGoal);
+      const flowProcessId = goal.flowProcessId || resolveGoalConfigFlowProcessId(goal.flow);
+      return {
+        id: goal.id,
+        title: goal.title,
+        groupId: goal.groupId,
+        groupLabel: getGoalConfigGroup(goal.groupId)?.label || "全部分组",
+        type: goal.type,
+        goalType: getGoalConfigTypeLabel(goal.type),
+        alignedGoalId,
+        alignedGoal: alignedGoalId ? getGoalConfigGoalTitle(alignedGoalId, goal.alignedGoal || "") : goal.alignedGoal || "",
+        executors: clone(goal.executors || []),
+        executorLabels: (goal.executors || []).map((item) => goalConfigExecutorLabel(item)),
+        flowProcessId,
+        flow: flowProcessId ? getGoalConfigProcessName(flowProcessId, goal.flow || "") : goal.flow || "",
+        createdAt: goal.createdAt,
+        krs: clone(goal.krs || []),
+      };
+    });
 }
 
 function isGoalConfigLaunchReadyGoal(goal) {
@@ -2390,7 +2568,7 @@ function isGoalConfigLaunchReadyGoal(goal) {
   }
 
   const hasTitle = !!String(goal.title || "").trim();
-  const hasFlow = !!String(goal.flow || "").trim();
+  const hasFlow = !!String(goal.flowProcessId || goal.flow || "").trim();
   const hasExecutors = Array.isArray(goal.executors) && goal.executors.length > 0;
   const hasKrs = Array.isArray(goal.krs) && goal.krs.length > 0;
   const hasKrTitles = hasKrs && goal.krs.every((kr) => !!String(kr.title || "").trim());
@@ -2497,9 +2675,14 @@ function saveGoalConfigProcessName(processId) {
     cancelGoalConfigProcessEditing();
     return true;
   }
+  const previousName = process.name;
   const nextName = normalizeProcessName(state.goalConfig.processEditingName);
   if (!nextName) {
     showToast("请输入流程名称");
+    return false;
+  }
+  if (isGoalConfigProcessNameTaken(nextName, processId)) {
+    showToast("流程名称已存在");
     return false;
   }
   if (process.name !== nextName) {
@@ -2512,6 +2695,20 @@ function saveGoalConfigProcessName(processId) {
           }
         : item
     );
+    state.goalConfigGoals = state.goalConfigGoals.map((goal) => {
+      const flowProcessId = goal.flowProcessId || resolveGoalConfigFlowProcessId(goal.flow);
+      if (flowProcessId !== processId && goal.flow !== previousName) {
+        return goal;
+      }
+      return {
+        ...goal,
+        flowProcessId: processId,
+        flow: nextName,
+      };
+    });
+    if (state.goalConfig.editingDraft) {
+      state.goalConfig.editingDraft = normalizeGoalConfigDraft(state.goalConfig.editingDraft);
+    }
     showToast("流程名称已更新");
   }
   state.goalConfig.processEditingId = null;
@@ -3333,7 +3530,9 @@ function createManagementGoalInstance(template, executorId, launchPeriod) {
     approvalNo: createApprovalNo(),
     goalType: template.goalType,
     goalTypeKey: template.type,
+    flowProcessId: template.flowProcessId || "",
     flow: template.flow,
+    alignedGoalId: template.alignedGoalId || "",
     alignedGoal: template.alignedGoal || "",
     templateKrs: clone(template.krs || []),
     keyResults: createGoalInstanceKeyResults(template.type, template.krs, "confirming"),
@@ -3357,7 +3556,9 @@ function createPendingTaskFromGoal(goal, stage = goal.stage) {
     processType: stage === "rating" ? "目标评分审批" : "目标确认审批",
     goalType: goal.goalType,
     goalTypeKey: goal.goalTypeKey,
+    flowProcessId: goal.flowProcessId || "",
     flow: goal.flow,
+    alignedGoalId: goal.alignedGoalId || "",
     alignedGoal: goal.alignedGoal,
     templateKrs: clone(goal.templateKrs || []),
     keyResults: createGoalInstanceKeyResults(goal.goalTypeKey || "auto", goal.templateKrs || [], stage),
@@ -5184,6 +5385,12 @@ function renderGoalConfigToolbar() {
 function renderGoalConfigViewCard(goal) {
   const executorText = getGoalConfigExecutorText(goal.executors);
   const executorPreview = executorText.slice(0, 5);
+  const alignedGoalLabel = goal.alignedGoalId
+    ? getGoalConfigGoalTitle(goal.alignedGoalId, goal.alignedGoal || "未设置对齐目标")
+    : goal.alignedGoal || "未设置对齐目标";
+  const flowLabel = goal.flowProcessId
+    ? getGoalConfigProcessName(goal.flowProcessId, goal.flow || "未设置流程")
+    : goal.flow || "未设置流程";
   return `
     <article class="goal-config-card" data-goal-config-card data-goal-type="${goal.type}">
       <div class="goal-config-card-head">
@@ -5191,7 +5398,7 @@ function renderGoalConfigViewCard(goal) {
           ${renderGoalConfigFormLabel("对齐")}
           <div class="goal-config-align-display">
             ${renderGoalConfigInlineIcon("align")}
-            <span>${escapeHtml(goal.alignedGoal || "未设置对齐目标")}</span>
+            <span>${escapeHtml(alignedGoalLabel)}</span>
           </div>
           ${renderGoalConfigMetricHead(goal.type)}
           <div class="goal-config-card-actions">
@@ -5244,7 +5451,7 @@ function renderGoalConfigViewCard(goal) {
         <div class="goal-config-info-row goal-config-flow-row">
           ${renderGoalConfigFormLabel("流程")}
           <div class="goal-config-info-value">
-            <span class="goal-config-flow-copy">${escapeHtml(goal.flow)}</span>
+            <span class="goal-config-flow-copy">${escapeHtml(flowLabel)}</span>
           </div>
         </div>
       </div>
@@ -5332,9 +5539,15 @@ function renderGoalConfigEditingCard() {
     return "";
   }
 
-  const selectedAlign = draft.alignedGoal || "未设置对齐目标";
+  const selectedAlign = draft.alignedGoalId
+    ? getGoalConfigGoalTitle(draft.alignedGoalId, draft.alignedGoal || "未设置对齐目标")
+    : draft.alignedGoal || "未设置对齐目标";
   const alignOptions = getGoalConfigAlignOptions(draft);
-  const activeAlignOption = alignOptions.find((option) => option.title === draft.alignedGoal) || null;
+  const activeAlignOption = alignOptions.find((option) => option.id === draft.alignedGoalId) || null;
+  const flowOptions = getGoalConfigFlowOptions();
+  const selectedFlowLabel = draft.flowProcessId
+    ? getGoalConfigProcessName(draft.flowProcessId, draft.flow || "未设置流程")
+    : draft.flow || "未设置流程";
 
   return `
     <article class="goal-config-card is-editing" data-goal-config-card data-goal-type="${draft.type}">
@@ -5358,7 +5571,7 @@ function renderGoalConfigEditingCard() {
           ${renderDropdownPanel(
             "goal-config-align",
             `
-              <button class="dropdown-option ${!draft.alignedGoal ? "is-active" : ""}" data-action="set-goal-config-draft-align" data-value="" type="button">未设置对齐目标</button>
+              <button class="dropdown-option ${!draft.alignedGoalId ? "is-active" : ""}" data-action="set-goal-config-draft-align" data-value="" type="button">未设置对齐目标</button>
               ${
                 alignOptions.length
                   ? alignOptions
@@ -5442,16 +5655,16 @@ function renderGoalConfigEditingCard() {
           <div class="goal-config-info-value goal-config-info-value-editing">
             <div class="control goal-config-inline-control">
               <button class="${dropdownTriggerClass("control-button goal-config-select-button goal-config-select-medium", "goal-config-flow")}" data-action="toggle-goal-config-dropdown" data-value="goal-config-flow" type="button" aria-expanded="${isDropdownOpen("goal-config-flow") ? "true" : "false"}">
-                <span class="truncate">${escapeHtml(draft.flow || getDefaultGoalConfigFlow())}</span>
+                <span class="truncate">${escapeHtml(selectedFlowLabel)}</span>
                 ${renderGoalConfigSelectArrow()}
               </button>
               ${renderDropdownPanel(
                 "goal-config-flow",
                 `
-                  ${getGoalConfigFlowOptions().map(
+                  ${flowOptions.map(
                     (option) => `
-                      <button class="dropdown-option ${draft.flow === option ? "is-active" : ""}" data-action="set-goal-config-draft-flow" data-value="${option}" type="button">
-                        ${option}
+                      <button class="dropdown-option ${draft.flowProcessId === option.id ? "is-active" : ""}" data-action="set-goal-config-draft-flow" data-value="${option.id}" type="button">
+                        ${escapeHtml(option.label)}
                       </button>
                     `
                   ).join("")}
@@ -6967,8 +7180,27 @@ function confirmOverlayAction() {
   }
   if (state.overlay.scope === "goal-config-process") {
     const targets = new Set(state.overlay.processIds || []);
+    const targetProcessNames = new Set(
+      state.goalConfigProcesses.filter((item) => targets.has(item.id)).map((item) => item.name)
+    );
+    const defaultFlowProcessId = getDefaultGoalConfigFlow();
+    const defaultFlowName = getGoalConfigProcessName(defaultFlowProcessId, DEFAULT_GOAL_CONFIG_PROCESSES[0].name);
     state.goalConfigProcesses = state.goalConfigProcesses.filter((item) => !targets.has(item.id) || item.isDefault);
+    state.goalConfigGoals = state.goalConfigGoals.map((goal) => {
+      const flowProcessId = goal.flowProcessId || resolveGoalConfigFlowProcessId(goal.flow);
+      if (!targets.has(flowProcessId) && !targetProcessNames.has(goal.flow)) {
+        return goal;
+      }
+      return {
+        ...goal,
+        flowProcessId: defaultFlowProcessId,
+        flow: defaultFlowName,
+      };
+    });
     state.goalConfig.processSelection = state.goalConfig.processSelection.filter((id) => !targets.has(id));
+    if (state.goalConfig.editingDraft) {
+      state.goalConfig.editingDraft = normalizeGoalConfigDraft(state.goalConfig.editingDraft);
+    }
     cancelGoalConfigProcessEditing();
     state.overlay = null;
     clearGoalConfigPanels();
@@ -7114,7 +7346,7 @@ function openGoalConfigInfoOverlay(kind, goalId) {
       },
       {
         title: "流程绑定",
-        description: `当前目标已绑定「${goal.flow}」，执行人与评分规则已就绪。`,
+        description: `当前目标已绑定「${goal.flowProcessId ? getGoalConfigProcessName(goal.flowProcessId, goal.flow || "未设置流程") : goal.flow || "未设置流程"}」，执行人与评分规则已就绪。`,
       },
       {
         title: "目标类型",
@@ -7227,21 +7459,25 @@ function saveGoalConfigDraft() {
     }
   }
 
+  const nextFlowProcessId = draft.flowProcessId || resolveGoalConfigFlowProcessId(draft.flow);
+  const nextAlignedGoalId = draft.alignedGoalId || resolveGoalConfigAlignedGoalId(draft.alignedGoal);
   const nextGoal = {
     ...draft,
     title: draft.title.trim(),
     groupId: draft.groupId || resolveGoalConfigTargetGroupId(),
     isNew: undefined,
+    flowProcessId: nextFlowProcessId,
+    flow: nextFlowProcessId ? getGoalConfigProcessName(nextFlowProcessId, draft.flow || "") : draft.flow || "",
+    alignedGoalId: nextAlignedGoalId,
+    alignedGoal: nextAlignedGoalId ? getGoalConfigGoalTitle(nextAlignedGoalId, draft.alignedGoal || "") : draft.alignedGoal || "",
     krs: draft.krs.map((kr) => ({
       ...kr,
       title: kr.title.trim(),
     })),
   };
 
-  if (nextGoal.alignedGoal) {
-    const alignedTargetGoal = state.goalConfigGoals.find(
-      (goal) => goal.id !== nextGoal.id && goal.title === nextGoal.alignedGoal
-    );
+  if (nextGoal.alignedGoalId) {
+    const alignedTargetGoal = getGoalConfigGoal(nextGoal.alignedGoalId);
     if (isGoalConfigMutualAlignBlocked(nextGoal, alignedTargetGoal)) {
       showToast("所选目标已对齐当前目标，不能互相对齐");
       return false;
@@ -7666,20 +7902,19 @@ function onAction(action, value, target) {
           setDropdownOpenState(null);
           break;
         }
-        const alignedGoal = value ? getGoalConfigGoal(value)?.title || value : "";
-        state.goalConfig.editingDraft = {
+        state.goalConfig.editingDraft = normalizeGoalConfigDraft({
           ...state.goalConfig.editingDraft,
-          alignedGoal,
-        };
+          alignedGoalId: value || "",
+        });
         setDropdownOpenState(null);
       }
       break;
     case "set-goal-config-draft-flow":
       if (state.goalConfig.editingDraft) {
-        state.goalConfig.editingDraft = {
+        state.goalConfig.editingDraft = normalizeGoalConfigDraft({
           ...state.goalConfig.editingDraft,
-          flow: value,
-        };
+          flowProcessId: value || "",
+        });
         setDropdownOpenState(null);
       }
       break;
@@ -7844,6 +8079,10 @@ function onAction(action, value, target) {
         const currentApprover = getCurrentApprover();
         if (!processName) {
           showToast("请输入流程名称");
+          break;
+        }
+        if (isGoalConfigProcessNameTaken(processName)) {
+          showToast("流程名称已存在");
           break;
         }
         state.goalConfigProcesses = [
