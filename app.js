@@ -2,6 +2,7 @@ const STORAGE_KEY = "okr-inprogress-demo:v3-demo-default";
 const TOAST_DURATION = 2200;
 const DROPDOWN_CHEVRON_ANIMATION_MS = 220;
 const DROPDOWN_PANEL_ANIMATION_MS = 220;
+const TAB_INDICATOR_ANIMATION_MS = 220;
 const DEFAULT_CURRENT_USER_KEY = "yanbo";
 const START_GOAL_PERIOD_TYPE_OPTIONS = [
   { key: "monthly", label: "月度" },
@@ -83,6 +84,7 @@ const GOAL_CONFIG_PROCESS_GUIDE_URL =
 const GOAL_INSTANCE_DETAIL_URL =
   "https://applink.dingtalk.com/approval/detail?corpId=ding749b80b6d5dc606effe93478753d9884&instanceId=ZSKgmcLwSH6GWeItLB4WwA01691774353203&from=applink";
 const GOAL_CONFIG_PROCESS_GUIDE_SPRITE = "./assets/process-guide-sprite.png";
+const PAYROLL_GROUP_LOCK_ICON_ASSET = "./assets/lock.svg";
 
 const GOAL_CONFIG_PROCESS_GUIDE_STEPS = [
   {
@@ -290,20 +292,6 @@ const LAUNCH_ADVANCE_GUIDE_STEPS = [
   },
 ];
 
-const GUIDE_MENU_GUIDE_STEPS = [
-  {
-    step: 1,
-    title: "引导教学",
-    message: "从这里重新学习所有功能引导",
-    hint: "点击打开引导菜单",
-    placement: "bottom",
-    padding: 6,
-    radius: 4,
-    closeLabel: "结束引导",
-    selectors: ['[data-guide-id="guide-help-trigger"] img'],
-  },
-];
-
 const CONFIG_PREP_GUIDE_DEFINITIONS = {
   "goal-process": {
     label: "目标与流程",
@@ -314,11 +302,6 @@ const CONFIG_PREP_GUIDE_DEFINITIONS = {
     label: "发起与推进",
     steps: LAUNCH_ADVANCE_GUIDE_STEPS,
     completedToast: "发起与推进引导已完成",
-  },
-  "guide-menu": {
-    label: "如何使用引导",
-    steps: GUIDE_MENU_GUIDE_STEPS,
-    completedToast: "",
   },
 };
 
@@ -385,26 +368,21 @@ const COMPLETED_TYPE_OPTIONS = [
 const GOAL_PAGE_KEYS = ["my-goals", "goal-alignment", "goal-management", "goal-config"];
 const PLAN_PAGE_KEYS = ["plan-management"];
 const BRIEF_PAGE_KEYS = ["brief-fill", "brief-review", "brief-management", "brief-config"];
-const STATS_PAGE_KEYS = ["task-report", "plan-report", "goal-report", "brief-report"];
-const SETTINGS_PAGE_KEYS = ["recycle-space", "company-info", "personal-settings", "permission-settings"];
+const STATS_PAGE_KEYS = ["task-report", "plan-report"];
+const SETTINGS_PAGE_KEYS = ["recycle-space", "company-info"];
 const APP_PAGE_KEYS = [
   "workbench",
   "task-module",
-  "plan-module",
-  ...GOAL_PAGE_KEYS,
   ...PLAN_PAGE_KEYS,
-  ...BRIEF_PAGE_KEYS,
+  "goal-management",
   ...STATS_PAGE_KEYS,
   ...SETTINGS_PAGE_KEYS,
-  "brief-module",
-  "stats-module",
-  "settings-module",
 ];
 const GOAL_PAGE_LABELS = {
   workbench: "工作台",
-  "task-module": "任务模块",
-  "plan-module": "计划模块",
-  "plan-management": "计划管理",
+  "task-module": "档案模块",
+  "plan-module": "算薪模块",
+  "plan-management": "算薪管理",
   "my-goals": "我的目标",
   "goal-alignment": "目标对齐",
   "goal-management": "目标管理",
@@ -414,14 +392,14 @@ const GOAL_PAGE_LABELS = {
   "brief-review": "审阅简报",
   "brief-management": "简报管理",
   "brief-config": "简报配置",
-  "stats-module": "统计模块",
-  "task-report": "任务报表",
-  "plan-report": "计划报表",
+  "stats-module": "报表模块",
+  "task-report": "薪资报表",
+  "plan-report": "档案报表",
   "goal-report": "目标报表",
   "brief-report": "简报报表",
   "settings-module": "设置模块",
-  "recycle-space": "回收空间",
-  "company-info": "企业信息",
+  "recycle-space": "职级薪档",
+  "company-info": "薪酬组设置",
   "personal-settings": "个性配置",
   "permission-settings": "权限配置",
 };
@@ -432,35 +410,33 @@ const SIDEBAR_PRIMARY_MODULES = [
 ];
 const SIDEBAR_GROUPS = [
   {
-    key: "goal",
-    pageKeys: GOAL_PAGE_KEYS,
-    icon: "menu-goal.svg",
-    label: "目标模块",
-    items: GOAL_PAGE_KEYS.map((pageKey) => ({ pageKey, label: GOAL_PAGE_LABELS[pageKey] })),
-  },
-  {
-    key: "brief",
-    pageKeys: ["brief-module", ...BRIEF_PAGE_KEYS],
-    icon: "menu-brief.svg",
-    label: GOAL_PAGE_LABELS["brief-module"],
-    items: BRIEF_PAGE_KEYS.map((pageKey) => ({ pageKey, label: GOAL_PAGE_LABELS[pageKey] })),
-  },
-  {
     key: "stats",
-    pageKeys: ["stats-module", ...STATS_PAGE_KEYS],
+    pageKeys: STATS_PAGE_KEYS,
     icon: "menu-stats.svg",
     label: GOAL_PAGE_LABELS["stats-module"],
     items: STATS_PAGE_KEYS.map((pageKey) => ({ pageKey, label: GOAL_PAGE_LABELS[pageKey] })),
   },
   {
     key: "settings",
-    pageKeys: ["settings-module", ...SETTINGS_PAGE_KEYS],
+    pageKeys: SETTINGS_PAGE_KEYS,
     icon: "menu-settings.svg",
     label: GOAL_PAGE_LABELS["settings-module"],
     items: SETTINGS_PAGE_KEYS.map((pageKey) => ({ pageKey, label: GOAL_PAGE_LABELS[pageKey] })),
   },
 ];
 const PAGE_KEY_ALIASES = {
+  "my-goals": "goal-management",
+  "goal-alignment": "goal-management",
+  "goal-config": "goal-management",
+  "brief-module": "goal-management",
+  "brief-fill": "goal-management",
+  "brief-review": "goal-management",
+  "brief-management": "goal-management",
+  "brief-config": "goal-management",
+  "goal-report": "goal-management",
+  "brief-report": "goal-management",
+  "stats-module": "task-report",
+  "settings-module": "recycle-space",
   "plan-module": "plan-management",
 };
 const USER_PROFILES = [
@@ -470,7 +446,7 @@ const USER_PROFILES = [
     label: "焰柏",
     roleLabel: "主管理员",
     avatar: "焰",
-    defaultPage: "my-goals",
+    defaultPage: "task-module",
     allowedPageKeys: Array.from(new Set(APP_PAGE_KEYS.map((pageKey) => PAGE_KEY_ALIASES[pageKey] || pageKey))),
   },
   {
@@ -479,8 +455,8 @@ const USER_PROFILES = [
     label: "远川",
     roleLabel: "普通员工",
     avatar: "远",
-    defaultPage: "my-goals",
-    allowedPageKeys: ["workbench", "task-module", "plan-management", "my-goals", "brief-fill", "brief-review"],
+    defaultPage: "task-module",
+    allowedPageKeys: ["workbench", "task-module", "plan-management", "goal-management", "task-report", "plan-report", "recycle-space", "company-info"],
   },
 ];
 const USER_PROFILE_BY_KEY = Object.fromEntries(
@@ -492,6 +468,93 @@ const USER_PROFILE_BY_KEY = Object.fromEntries(
     },
   ])
 );
+const DEFAULT_PAYROLL_GROUP_SETTINGS_ROWS = [
+  {
+    id: "payroll-group-zhidao",
+    name: "支稻科技有限公司",
+    creatorId: "yanbo",
+    creator: "焰柏",
+  },
+  {
+    id: "payroll-group-youdao",
+    name: "友稻科技有限公司",
+    creatorId: "yanbo",
+    creator: "焰柏",
+  },
+  {
+    id: "payroll-group-budao",
+    name: "布稻科技有限公司",
+    creatorId: "yanbo",
+    creator: "焰柏",
+  },
+  {
+    id: "payroll-group-other",
+    name: "其他公司",
+    creatorId: "yanbo",
+    creator: "焰柏",
+  },
+];
+const PAYROLL_GROUP_DETAIL_TAB_OPTIONS = [
+  { key: "salary-items", label: "薪酬项" },
+  { key: "rules", label: "规则设置" },
+  { key: "permissions", label: "权限设置" },
+];
+const PAYROLL_GROUP_RULE_VIEW_OPTIONS = [
+  { key: "fixed", label: "固定天数" },
+  { key: "monthly", label: "每月天数" },
+];
+const PAYROLL_GROUP_RULE_MONTH_OPTIONS = Array.from({ length: 12 }, (_, index) => ({
+  key: `month-${index + 1}`,
+  label: `${index + 1}月天数（天）`,
+}));
+const DEFAULT_PAYROLL_GROUP_RULE_SETTINGS = {
+  viewMode: "fixed",
+  fixedDays: "",
+  dailyAttendanceHours: "8.00",
+  monthlyDays: PAYROLL_GROUP_RULE_MONTH_OPTIONS.map(() => ""),
+};
+const PAYROLL_GROUP_DETAIL_SECTION_OPTIONS = [
+  { key: "info", label: "信息项" },
+  { key: "payment", label: "支付项" },
+  { key: "deduction", label: "扣减项" },
+  { key: "change", label: "变动项" },
+  { key: "company", label: "公司承担" },
+];
+const PAYROLL_GROUP_DETAIL_STATUS_OPTIONS = [
+  { key: "all", label: "全部状态" },
+  { key: "enabled", label: "已启用" },
+  { key: "disabled", label: "已停用" },
+];
+const DEFAULT_PAYROLL_GROUP_DETAIL_FIELDS = [
+  { id: "payroll-field-name", sectionKey: "info", name: "姓名", status: "enabled", creatorId: "yanbo", creator: "焰柏" },
+  { id: "payroll-field-mobile", sectionKey: "info", name: "手机号", status: "enabled", creatorId: "yanbo", creator: "焰柏" },
+  { id: "payroll-field-department", sectionKey: "info", name: "部门", status: "enabled", creatorId: "yanbo", creator: "焰柏" },
+  { id: "payroll-field-position", sectionKey: "info", name: "职位", status: "enabled", creatorId: "yanbo", creator: "焰柏" },
+  { id: "payroll-field-employee-type", sectionKey: "info", name: "员工类型", status: "enabled", creatorId: "yanbo", creator: "焰柏" },
+  { id: "payroll-field-employee-status", sectionKey: "info", name: "员工状态", status: "enabled", creatorId: "yanbo", creator: "焰柏" },
+  { id: "payroll-field-onboard-date", sectionKey: "info", name: "入职时间", status: "enabled", creatorId: "yanbo", creator: "焰柏" },
+  { id: "payroll-field-grade-salary", sectionKey: "info", name: "档位薪资", status: "enabled", creatorId: "yanbo", creator: "焰柏" },
+  { id: "payroll-field-performance-score", sectionKey: "info", name: "绩效得分", status: "enabled", creatorId: "yanbo", creator: "焰柏" },
+  { id: "payroll-field-performance-bonus", sectionKey: "change", name: "绩效奖罚金", status: "enabled", creatorId: "yanbo", creator: "焰柏" },
+  { id: "payroll-field-company-insurance", sectionKey: "company", name: "公司承担社保", status: "enabled", creatorId: "yanbo", creator: "焰柏" },
+  { id: "payroll-field-company-fund", sectionKey: "company", name: "公司承担公积金", status: "enabled", creatorId: "yanbo", creator: "焰柏" },
+];
+const DEFAULT_PAYROLL_GROUP_DETAIL_FIELD_IDS = new Set(DEFAULT_PAYROLL_GROUP_DETAIL_FIELDS.map((item) => item.id));
+const DEFAULT_PAYROLL_GROUP_DETAIL_STATE = {
+  rowId: null,
+  activeTab: "salary-items",
+  sectionKey: "info",
+  itemKeyword: "",
+  fieldKeyword: "",
+  status: "all",
+  creator: "all",
+  page: 1,
+  sidebarCollapsed: false,
+  ruleSettings: {
+    ...DEFAULT_PAYROLL_GROUP_RULE_SETTINGS,
+    monthlyDays: [...DEFAULT_PAYROLL_GROUP_RULE_SETTINGS.monthlyDays],
+  },
+};
 const app = document.getElementById("app");
 let toastTimer = null;
 let configPrepGuideFrame = 0;
@@ -504,8 +567,52 @@ const normalizeBooleanMap = (value) =>
     ? Object.fromEntries(Object.entries(value).map(([key, flag]) => [key, !!flag]))
     : {};
 const normalizeCurrentUserKey = (value) => (USER_PROFILE_BY_KEY[value] ? value : DEFAULT_CURRENT_USER_KEY);
+const isValidPayrollGroupCreator = (value, rows = DEFAULT_PAYROLL_GROUP_SETTINGS_ROWS) =>
+  value === "all" || rows.some((row) => row.creator === value);
 const getUserProfileByKey = (key = DEFAULT_CURRENT_USER_KEY) => USER_PROFILE_BY_KEY[normalizeCurrentUserKey(key)];
 const getCurrentUserProfile = () => getUserProfileByKey(state?.currentUserKey);
+function getPayrollGroupSwitchAvatarLabel(name, index = 0) {
+  const compactName = String(name || "").replace(/[\s()（）]/g, "").trim();
+  if (compactName) {
+    return compactName.charAt(0).toUpperCase();
+  }
+  return String((index % 9) + 1);
+}
+
+function getPayrollGroupSwitchOptions(rows = getPayrollGroupSettingsRows()) {
+  const sourceRows = Array.isArray(rows) ? rows : [];
+  if (!sourceRows.length) {
+    return [
+      {
+        key: "",
+        label: "暂无薪酬组",
+        subtext: "未配置",
+        avatar: "-",
+      },
+    ];
+  }
+
+  return sourceRows.map((row, index) => ({
+    key: row.id,
+    label: row.name,
+    subtext: row.creator || "未设置创建人",
+    avatar: getPayrollGroupSwitchAvatarLabel(row.name, index),
+  }));
+}
+
+function getDefaultPayrollGroupId(rows = getPayrollGroupSettingsRows(), preferredId = "") {
+  const sourceRows = Array.isArray(rows) ? rows : [];
+  if (preferredId && sourceRows.some((row) => row.id === preferredId)) {
+    return preferredId;
+  }
+  return sourceRows[0]?.id || "";
+}
+
+const getCurrentPayrollGroupId = () => getDefaultPayrollGroupId(getPayrollGroupSettingsRows(), state?.currentPayrollGroupId);
+function getCurrentPayrollGroupSwitchOption(payrollGroupId = getCurrentPayrollGroupId(), rows = getPayrollGroupSettingsRows()) {
+  const options = getPayrollGroupSwitchOptions(rows);
+  return options.find((option) => option.key === payrollGroupId) || options[0];
+}
 const getCurrentApprover = () => {
   const currentUser = getCurrentUserProfile();
   return {
@@ -514,8 +621,11 @@ const getCurrentApprover = () => {
   };
 };
 const normalizeGoalPage = (value) => {
-  const normalized = APP_PAGE_KEYS.includes(value) ? value : "my-goals";
-  return PAGE_KEY_ALIASES[normalized] || normalized;
+  const aliased = PAGE_KEY_ALIASES[value];
+  if (aliased) {
+    return aliased;
+  }
+  return APP_PAGE_KEYS.includes(value) ? value : "task-module";
 };
 const isGoalModulePage = (pageKey) => GOAL_PAGE_KEYS.includes(normalizeGoalPage(pageKey));
 const getSidebarGroup = (groupKey) => SIDEBAR_GROUPS.find((group) => group.key === groupKey) || null;
@@ -774,7 +884,9 @@ function renderGoalConfigProcessGuidePreload() {
 function makeDefaultState() {
   return {
     currentUserKey: DEFAULT_CURRENT_USER_KEY,
-    activePage: "my-goals",
+    currentPayrollGroupId: DEFAULT_PAYROLL_GROUP_SETTINGS_ROWS[0]?.id || "",
+    activePage: "task-module",
+    pendingManualGuidePage: null,
     planNavExpanded: false,
     goalNavExpanded: true,
     briefNavExpanded: false,
@@ -793,8 +905,6 @@ function makeDefaultState() {
     activeTab: "ongoing",
     goalManagementGuideDismissedByUser: {},
     guideAutoStartedByUser: {},
-    guideUsagePromptCompletedByUser: {},
-    guideUsagePromptPendingByUser: {},
     filters: {
       ongoing: {
         keyword: "",
@@ -867,6 +977,15 @@ function makeDefaultState() {
       cardMenuId: null,
       processMenuId: null,
     },
+    payrollGroupSettings: {
+      keyword: "",
+      creator: "all",
+      page: 1,
+      rows: clone(DEFAULT_PAYROLL_GROUP_SETTINGS_ROWS),
+      savedRuleSettingsByRowId: {},
+      draftRuleSettingsByRowId: {},
+      detail: clone(DEFAULT_PAYROLL_GROUP_DETAIL_STATE),
+    },
     pageSize: 100,
     openDropdown: null,
     openRowMenu: null,
@@ -878,6 +997,7 @@ function makeDefaultState() {
 
 let state = loadState();
 let pendingDropdownChevronAnimations = [];
+let pendingTabIndicatorTransitions = new Map();
 let openingDropdownKeys = new Set();
 let closingDropdownKeys = new Set();
 let dropdownCloseTimers = new Map();
@@ -1058,6 +1178,106 @@ function scheduleDropdownMotionStateCleanup() {
   });
 }
 
+function escapeSelectorAttributeValue(value) {
+  const text = String(value || "");
+  if (window.CSS && typeof window.CSS.escape === "function") {
+    return window.CSS.escape(text);
+  }
+
+  return text.replace(/\\/g, "\\\\").replace(/"/g, '\\"');
+}
+
+function queueTabIndicatorTransition(groupKey, fromTabKey, toTabKey) {
+  if (!groupKey || !fromTabKey || !toTabKey || fromTabKey === toTabKey) {
+    return;
+  }
+
+  pendingTabIndicatorTransitions.set(groupKey, { fromTabKey, toTabKey });
+}
+
+function getTabIndicatorMetrics(tabRow, tabKey) {
+  const tabButton = [...tabRow.querySelectorAll(".tab")].find(
+    (button) => button instanceof HTMLElement && button.dataset.tabValue === tabKey
+  );
+
+  if (!(tabButton instanceof HTMLElement)) {
+    return null;
+  }
+
+  return {
+    left: Math.max(0, tabButton.offsetLeft + 8),
+    width: Math.max(0, tabButton.offsetWidth - 16),
+  };
+}
+
+function syncTabIndicators() {
+  const queuedTransitions = pendingTabIndicatorTransitions;
+  pendingTabIndicatorTransitions = new Map();
+
+  document.querySelectorAll(".tabs[data-tab-group]").forEach((tabRow) => {
+    if (!(tabRow instanceof HTMLElement)) {
+      return;
+    }
+
+    const indicator = tabRow.querySelector(".tab-indicator");
+    const activeTab = tabRow.querySelector(".tab.is-active");
+
+    if (!(indicator instanceof HTMLElement) || !(activeTab instanceof HTMLElement)) {
+      return;
+    }
+
+    const activeTabKey = activeTab.dataset.tabValue || "";
+    const activeMetrics = getTabIndicatorMetrics(tabRow, activeTabKey);
+
+    if (!activeMetrics) {
+      return;
+    }
+
+    indicator.style.opacity = "1";
+
+    const transition = queuedTransitions.get(tabRow.dataset.tabGroup || "");
+    if (!transition || transition.toTabKey !== activeTabKey) {
+      indicator.style.left = `${activeMetrics.left}px`;
+      indicator.style.width = `${activeMetrics.width}px`;
+      return;
+    }
+
+    const fromMetrics = getTabIndicatorMetrics(tabRow, transition.fromTabKey);
+    if (!fromMetrics) {
+      indicator.style.left = `${activeMetrics.left}px`;
+      indicator.style.width = `${activeMetrics.width}px`;
+      return;
+    }
+
+    if (typeof indicator.animate === "function") {
+      indicator.style.left = `${activeMetrics.left}px`;
+      indicator.style.width = `${activeMetrics.width}px`;
+      indicator.animate(
+        [
+          { left: `${fromMetrics.left}px`, width: `${fromMetrics.width}px` },
+          { left: `${activeMetrics.left}px`, width: `${activeMetrics.width}px` },
+        ],
+        {
+          duration: TAB_INDICATOR_ANIMATION_MS,
+          easing: "cubic-bezier(0.22, 1, 0.36, 1)",
+        }
+      );
+      return;
+    }
+
+    indicator.style.transition = `left ${TAB_INDICATOR_ANIMATION_MS}ms cubic-bezier(0.22, 1, 0.36, 1), width ${TAB_INDICATOR_ANIMATION_MS}ms cubic-bezier(0.22, 1, 0.36, 1)`;
+    indicator.style.left = `${fromMetrics.left}px`;
+    indicator.style.width = `${fromMetrics.width}px`;
+    requestAnimationFrame(() => {
+      indicator.style.left = `${activeMetrics.left}px`;
+      indicator.style.width = `${activeMetrics.width}px`;
+    });
+    window.setTimeout(() => {
+      indicator.style.transition = "";
+    }, TAB_INDICATOR_ANIMATION_MS);
+  });
+}
+
 function clearClosingDropdown(dropdownKey) {
   if (!dropdownKey) {
     return;
@@ -1073,11 +1293,31 @@ function clearClosingDropdown(dropdownKey) {
 }
 
 function refreshDropdownMotionContainers() {
+  if (syncConfirmModal()) {
+    return;
+  }
+
+  if (syncGoalConfigProcessCreateModal()) {
+    return;
+  }
+
+  if (syncPayrollGroupCreateModal()) {
+    return;
+  }
+
+  if (syncPayrollGroupFieldCreateDrawer()) {
+    return;
+  }
+
   if (syncGoalConfigTransferModal()) {
     return;
   }
 
   if (syncStartGoalModal()) {
+    return;
+  }
+
+  if (state.activePage === "company-info" && syncPayrollGroupPage()) {
     return;
   }
 
@@ -1359,9 +1599,29 @@ function normalizeState(nextState) {
       alignedGoal: nextAlignedGoalTitle,
     };
   });
+  const normalizedPayrollGroupSettingsRows = normalizePayrollGroupSettingsRows(
+    current.payrollGroupSettings && current.payrollGroupSettings.rows
+  );
+  const normalizedPayrollGroupSavedRuleSettingsByRowId = normalizePayrollGroupRuleSettingsMap(
+    current.payrollGroupSettings && current.payrollGroupSettings.savedRuleSettingsByRowId,
+    normalizedPayrollGroupSettingsRows
+  );
+  const normalizedPayrollGroupDraftRuleSettingsByRowId = normalizePayrollGroupRuleSettingsMap(
+    current.payrollGroupSettings && current.payrollGroupSettings.draftRuleSettingsByRowId,
+    normalizedPayrollGroupSettingsRows
+  );
+  const normalizedPayrollGroupDetail = normalizePayrollGroupDetailState(
+    current.payrollGroupSettings && current.payrollGroupSettings.detail,
+    normalizedPayrollGroupSettingsRows
+  );
+  const currentPayrollGroupId = getDefaultPayrollGroupId(
+    normalizedPayrollGroupSettingsRows,
+    current.currentPayrollGroupId
+  );
   return {
     ...current,
     currentUserKey,
+    currentPayrollGroupId,
     pendingGoals: normalizedPendingGoals,
     myExecutingGoals: normalizedMyExecutingGoals,
     myCompletedGoals: normalizedMyCompletedGoals,
@@ -1377,8 +1637,6 @@ function normalizeState(nextState) {
     sidebarCollapsed: !!current.sidebarCollapsed,
     goalManagementGuideDismissedByUser: normalizeBooleanMap(current.goalManagementGuideDismissedByUser),
     guideAutoStartedByUser: normalizeBooleanMap(current.guideAutoStartedByUser),
-    guideUsagePromptCompletedByUser: normalizeBooleanMap(current.guideUsagePromptCompletedByUser),
-    guideUsagePromptPendingByUser: normalizeBooleanMap(current.guideUsagePromptPendingByUser),
     selectionByTab: {
       ongoing: ((current.selectionByTab && current.selectionByTab.ongoing) || [])
         .filter((id) => ongoingGoalIds.has(id)),
@@ -1517,6 +1775,19 @@ function normalizeState(nextState) {
       cardMenuId: null,
       processMenuId: null,
     },
+    payrollGroupSettings: {
+      keyword: (current.payrollGroupSettings && current.payrollGroupSettings.keyword) || "",
+      creator:
+        current.payrollGroupSettings &&
+        isValidPayrollGroupCreator(current.payrollGroupSettings.creator, normalizedPayrollGroupSettingsRows)
+          ? current.payrollGroupSettings.creator
+          : "all",
+      page: Math.max(1, Number(current.payrollGroupSettings && current.payrollGroupSettings.page) || 1),
+      rows: normalizedPayrollGroupSettingsRows,
+      savedRuleSettingsByRowId: normalizedPayrollGroupSavedRuleSettingsByRowId,
+      draftRuleSettingsByRowId: normalizedPayrollGroupDraftRuleSettingsByRowId,
+      detail: normalizedPayrollGroupDetail,
+    },
     pageSize: PAGE_SIZE_OPTIONS.includes(Number(current.pageSize))
       ? Number(current.pageSize)
       : 100,
@@ -1531,6 +1802,7 @@ function normalizeState(nextState) {
 function persistState() {
   const payload = {
     currentUserKey: state.currentUserKey,
+    currentPayrollGroupId: state.currentPayrollGroupId,
     activePage: state.activePage,
     planNavExpanded: state.planNavExpanded,
     goalNavExpanded: state.goalNavExpanded,
@@ -1550,8 +1822,6 @@ function persistState() {
     activeTab: state.activeTab,
     goalManagementGuideDismissedByUser: state.goalManagementGuideDismissedByUser,
     guideAutoStartedByUser: state.guideAutoStartedByUser,
-    guideUsagePromptCompletedByUser: state.guideUsagePromptCompletedByUser,
-    guideUsagePromptPendingByUser: state.guideUsagePromptPendingByUser,
     filters: state.filters,
     selectionByTab: state.selectionByTab,
     pageByTab: state.pageByTab,
@@ -1568,6 +1838,7 @@ function persistState() {
       cardMenuId: null,
       processMenuId: null,
     },
+    payrollGroupSettings: state.payrollGroupSettings,
     pageSize: state.pageSize,
   };
   localStorage.setItem(STORAGE_KEY, JSON.stringify(payload));
@@ -1754,6 +2025,1061 @@ function getPagedGoals(goals, tabKey = getTabKey()) {
   };
 }
 
+function getPayrollGroupCreatorOptions() {
+  const rows = getPayrollGroupSettingsRows();
+  return [
+    { key: "all", label: "全部成员" },
+    ...new Map(rows.map((row) => [row.creator, { key: row.creator, label: row.creator }])).values(),
+  ];
+}
+
+function getPayrollGroupSettingsFilters() {
+  return state.payrollGroupSettings;
+}
+
+function getPayrollGroupSettingsRows() {
+  if (state.payrollGroupSettings && Array.isArray(state.payrollGroupSettings.rows)) {
+    return state.payrollGroupSettings.rows;
+  }
+  return clone(DEFAULT_PAYROLL_GROUP_SETTINGS_ROWS);
+}
+
+function normalizePayrollGroupDetailFieldName(name) {
+  const trimmedName = String(name || "").trim();
+  return trimmedName === "Tip" ? "薪酬项模版" : trimmedName;
+}
+
+function normalizePayrollGroupSettingsRows(rows) {
+  const sourceRows = Array.isArray(rows) ? rows : clone(DEFAULT_PAYROLL_GROUP_SETTINGS_ROWS);
+  return sourceRows
+    .map((row) => ({
+      ...row,
+      id: String(row.id || "").trim(),
+      name: String(row.name || "").trim(),
+      creatorId: String(row.creatorId || "").trim(),
+      creator: String(row.creator || "").trim(),
+    }))
+    .filter((row) => row.id && row.name && row.creator);
+}
+
+function normalizePayrollGroupDetailFieldRows(rows) {
+  const sourceRows = Array.isArray(rows) ? rows : clone(DEFAULT_PAYROLL_GROUP_DETAIL_FIELDS);
+  return sourceRows
+    .map((row) => {
+      const id = String(row.id || "").trim();
+      return {
+        ...row,
+        id,
+        sectionKey: PAYROLL_GROUP_DETAIL_SECTION_OPTIONS.some((item) => item.key === row.sectionKey)
+          ? row.sectionKey
+          : DEFAULT_PAYROLL_GROUP_DETAIL_STATE.sectionKey,
+        name: normalizePayrollGroupDetailFieldName(row.name),
+        status: row.status === "disabled" ? "disabled" : "enabled",
+        creatorId: String(row.creatorId || "").trim(),
+        creator: String(row.creator || "").trim(),
+        isSystemDefault: row.isSystemDefault === true || DEFAULT_PAYROLL_GROUP_DETAIL_FIELD_IDS.has(id),
+      };
+    })
+    .filter((row) => row.id && row.name && row.creator);
+}
+
+function normalizePayrollGroupRuleSettings(ruleSettings) {
+  const source = ruleSettings && typeof ruleSettings === "object" ? ruleSettings : DEFAULT_PAYROLL_GROUP_RULE_SETTINGS;
+  const monthlyDaysSource = Array.isArray(source.monthlyDays) ? source.monthlyDays : [];
+
+  return {
+    viewMode: source.viewMode === "monthly" ? "monthly" : "fixed",
+    fixedDays: String(source.fixedDays || ""),
+    dailyAttendanceHours: String(
+      source.dailyAttendanceHours ?? DEFAULT_PAYROLL_GROUP_RULE_SETTINGS.dailyAttendanceHours
+    ),
+    monthlyDays: PAYROLL_GROUP_RULE_MONTH_OPTIONS.map((_, index) => String(monthlyDaysSource[index] || "")),
+  };
+}
+
+function normalizePayrollGroupRuleSettingsMap(ruleSettingsMap, rows = getPayrollGroupSettingsRows()) {
+  const source =
+    ruleSettingsMap && typeof ruleSettingsMap === "object" && !Array.isArray(ruleSettingsMap) ? ruleSettingsMap : {};
+  const validRowIds = new Set(rows.map((row) => row.id));
+
+  return Object.fromEntries(
+    Object.entries(source)
+      .filter(([rowId]) => validRowIds.has(rowId))
+      .map(([rowId, settings]) => [rowId, normalizePayrollGroupRuleSettings(settings)])
+  );
+}
+
+function normalizePayrollGroupDetailState(detail, rows = getPayrollGroupSettingsRows()) {
+  const source = detail && typeof detail === "object" ? detail : DEFAULT_PAYROLL_GROUP_DETAIL_STATE;
+  const activeTab = PAYROLL_GROUP_DETAIL_TAB_OPTIONS.some((item) => item.key === source.activeTab)
+    ? source.activeTab
+    : DEFAULT_PAYROLL_GROUP_DETAIL_STATE.activeTab;
+  const sectionKey = PAYROLL_GROUP_DETAIL_SECTION_OPTIONS.some((item) => item.key === source.sectionKey)
+    ? source.sectionKey
+    : DEFAULT_PAYROLL_GROUP_DETAIL_STATE.sectionKey;
+  const rowId = rows.some((row) => row.id === source.rowId) ? source.rowId : null;
+  const fieldRows = normalizePayrollGroupDetailFieldRows(
+    Array.isArray(source.fieldRows) ? source.fieldRows : clone(DEFAULT_PAYROLL_GROUP_DETAIL_FIELDS)
+  );
+
+  return {
+    rowId,
+    activeTab,
+    sectionKey,
+    itemKeyword: String(source.itemKeyword || ""),
+    fieldKeyword: String(source.fieldKeyword || ""),
+    status: PAYROLL_GROUP_DETAIL_STATUS_OPTIONS.some((item) => item.key === source.status) ? source.status : "all",
+    creator: String(source.creator || "all"),
+    page: Math.max(1, Number(source.page) || 1),
+    sidebarCollapsed: !!source.sidebarCollapsed,
+    fieldRows,
+    ruleSettings: normalizePayrollGroupRuleSettings(source.ruleSettings),
+  };
+}
+
+function getPayrollGroupDetailState() {
+  return normalizePayrollGroupDetailState(state.payrollGroupSettings?.detail, getPayrollGroupSettingsRows());
+}
+
+function isPayrollGroupDetailOpen() {
+  return !!getPayrollGroupDetailState().rowId;
+}
+
+function getPayrollGroupDetailRow() {
+  const detail = getPayrollGroupDetailState();
+  return detail.rowId ? getPayrollGroupSettingsRow(detail.rowId) : null;
+}
+
+function setPayrollGroupDetailState(nextDetail) {
+  state.payrollGroupSettings.detail = normalizePayrollGroupDetailState(nextDetail, getPayrollGroupSettingsRows());
+}
+
+function resetPayrollGroupDetailPaging() {
+  const detail = getPayrollGroupDetailState();
+  setPayrollGroupDetailState({
+    ...detail,
+    page: 1,
+  });
+}
+
+function getPayrollGroupDetailFieldRows() {
+  return getPayrollGroupDetailState().fieldRows || clone(DEFAULT_PAYROLL_GROUP_DETAIL_FIELDS);
+}
+
+function getPayrollGroupSavedRuleSettingsMap() {
+  return normalizePayrollGroupRuleSettingsMap(
+    state.payrollGroupSettings?.savedRuleSettingsByRowId,
+    getPayrollGroupSettingsRows()
+  );
+}
+
+function getPayrollGroupRuleDraftSettingsMap() {
+  return normalizePayrollGroupRuleSettingsMap(
+    state.payrollGroupSettings?.draftRuleSettingsByRowId,
+    getPayrollGroupSettingsRows()
+  );
+}
+
+function getPayrollGroupRuleSettingsForRow(rowId, fallbackSettings = DEFAULT_PAYROLL_GROUP_RULE_SETTINGS) {
+  const normalizedRowId = String(rowId || "").trim();
+  const draftSettings = getPayrollGroupRuleDraftSettingsMap()[normalizedRowId];
+  if (draftSettings) {
+    return draftSettings;
+  }
+  const savedSettings = getPayrollGroupSavedRuleSettingsMap()[normalizedRowId];
+  if (savedSettings) {
+    return savedSettings;
+  }
+  return normalizePayrollGroupRuleSettings(fallbackSettings);
+}
+
+function setPayrollGroupRuleDraftForRow(rowId, nextSettings) {
+  const normalizedRowId = String(rowId || "").trim();
+  if (!normalizedRowId) {
+    return normalizePayrollGroupRuleSettings(nextSettings);
+  }
+  const normalizedSettings = normalizePayrollGroupRuleSettings(nextSettings);
+  state.payrollGroupSettings = {
+    ...state.payrollGroupSettings,
+    draftRuleSettingsByRowId: {
+      ...getPayrollGroupRuleDraftSettingsMap(),
+      [normalizedRowId]: normalizedSettings,
+    },
+  };
+  return normalizedSettings;
+}
+
+function setPayrollGroupRuleSavedForRow(rowId, nextSettings) {
+  const normalizedRowId = String(rowId || "").trim();
+  if (!normalizedRowId) {
+    return normalizePayrollGroupRuleSettings(nextSettings);
+  }
+  const normalizedSettings = normalizePayrollGroupRuleSettings(nextSettings);
+  state.payrollGroupSettings = {
+    ...state.payrollGroupSettings,
+    savedRuleSettingsByRowId: {
+      ...getPayrollGroupSavedRuleSettingsMap(),
+      [normalizedRowId]: normalizedSettings,
+    },
+    draftRuleSettingsByRowId: {
+      ...getPayrollGroupRuleDraftSettingsMap(),
+      [normalizedRowId]: normalizedSettings,
+    },
+  };
+  return normalizedSettings;
+}
+
+function getPayrollGroupRuleSettings() {
+  const detail = getPayrollGroupDetailState();
+  if (detail.rowId) {
+    return getPayrollGroupRuleSettingsForRow(detail.rowId, detail.ruleSettings);
+  }
+  return normalizePayrollGroupRuleSettings(detail.ruleSettings);
+}
+
+function getPayrollGroupDetailField(fieldId) {
+  return getPayrollGroupDetailFieldRows().find((item) => item.id === fieldId) || null;
+}
+
+function getPayrollGroupDetailCreatorOptions() {
+  return [
+    { key: "all", label: "全部成员" },
+    ...new Map(getPayrollGroupDetailFieldRows().map((item) => [item.creator, { key: item.creator, label: item.creator }])).values(),
+  ];
+}
+
+function getPayrollGroupDetailSectionCounts(rows = getPayrollGroupDetailFieldRows()) {
+  return rows.reduce((counts, item) => {
+    const sectionKey = String(item.sectionKey || "");
+    counts[sectionKey] = (counts[sectionKey] || 0) + 1;
+    return counts;
+  }, {});
+}
+
+function getVisiblePayrollGroupDetailSections() {
+  const detail = getPayrollGroupDetailState();
+  const keyword = detail.itemKeyword.trim().toLowerCase();
+  const sectionCounts = getPayrollGroupDetailSectionCounts();
+  return PAYROLL_GROUP_DETAIL_SECTION_OPTIONS.filter((item) => {
+    if (!keyword) {
+      return true;
+    }
+    return item.label.toLowerCase().includes(keyword);
+  }).map((item) => ({
+    ...item,
+    count: sectionCounts[item.key] || 0,
+  }));
+}
+
+function getFilteredPayrollGroupDetailFields() {
+  const detail = getPayrollGroupDetailState();
+  const keyword = detail.fieldKeyword.trim().toLowerCase();
+
+  return getPayrollGroupDetailFieldRows().filter((item) => {
+    if (item.sectionKey !== detail.sectionKey) {
+      return false;
+    }
+    if (detail.status !== "all" && item.status !== detail.status) {
+      return false;
+    }
+    if (detail.creator !== "all" && item.creator !== detail.creator) {
+      return false;
+    }
+    if (!keyword) {
+      return true;
+    }
+    return [item.name, item.creator].some((value) => String(value || "").toLowerCase().includes(keyword));
+  });
+}
+
+function getPayrollGroupDetailPagedFields(rows) {
+  const detail = getPayrollGroupDetailState();
+  const totalPages = Math.max(1, Math.ceil(rows.length / state.pageSize));
+  const currentPage = Math.min(detail.page, totalPages);
+
+  if (currentPage !== detail.page) {
+    setPayrollGroupDetailState({
+      ...detail,
+      page: currentPage,
+    });
+  }
+
+  const start = (currentPage - 1) * state.pageSize;
+  return {
+    page: currentPage,
+    totalPages,
+    items: rows.slice(start, start + state.pageSize),
+  };
+}
+
+function getPayrollGroupDetailFieldMenuId(fieldId) {
+  return `payroll-group-detail-field:${fieldId}`;
+}
+
+function isPayrollGroupDetailFieldMenuId(menuId) {
+  return String(menuId || "").startsWith("payroll-group-detail-field:");
+}
+
+function isPayrollGroupPageMenuId(menuId) {
+  return isPayrollGroupRowMenuId(menuId) || isPayrollGroupDetailFieldMenuId(menuId);
+}
+
+function isPayrollGroupDropdownKey(key) {
+  return [
+    "payroll-group-creator",
+    "payroll-group-page-size",
+    "payroll-group-detail-status",
+    "payroll-group-detail-creator",
+    "payroll-group-detail-page-size",
+  ].includes(key);
+}
+
+function getPayrollGroupDetailTabLabel(tabKey) {
+  return PAYROLL_GROUP_DETAIL_TAB_OPTIONS.find((item) => item.key === tabKey)?.label || "薪酬项";
+}
+
+function getPayrollGroupDetailSectionLabel(sectionKey) {
+  return PAYROLL_GROUP_DETAIL_SECTION_OPTIONS.find((item) => item.key === sectionKey)?.label || "信息项";
+}
+
+function formatPayrollGroupDetailCreateLabel(sectionKey) {
+  const label = getPayrollGroupDetailSectionLabel(sectionKey);
+  return `创建${label}${label.endsWith("项") ? "" : "项"}`;
+}
+
+function formatPayrollGroupDetailEditLabel(sectionKey) {
+  const label = getPayrollGroupDetailSectionLabel(sectionKey);
+  return `编辑${label}${label.endsWith("项") ? "" : "项"}`;
+}
+
+const PAYROLL_GROUP_DETAIL_FIELD_CREATE_MODE_OPTIONS = [
+  { key: "manual", label: "手动输入" },
+  { key: "auto", label: "自动输入" },
+];
+
+const PAYROLL_GROUP_DETAIL_FIELD_CREATE_TYPE_OPTIONS = {
+  auto: [
+    { key: "formula", label: "公式" },
+    { key: "other-application", label: "其他来源" },
+  ],
+  manual: [
+    { key: "text", label: "文本" },
+    { key: "number", label: "数值" },
+  ],
+};
+
+const PAYROLL_GROUP_DETAIL_FIELD_CREATE_CUSTOM_EXTERNAL_APP_KEY = "自定义外部";
+
+const PAYROLL_GROUP_DETAIL_FIELD_CREATE_SOURCE_APP_OPTIONS = [
+  {
+    key: PAYROLL_GROUP_DETAIL_FIELD_CREATE_CUSTOM_EXTERNAL_APP_KEY,
+    label: PAYROLL_GROUP_DETAIL_FIELD_CREATE_CUSTOM_EXTERNAL_APP_KEY,
+  },
+  { key: "钉钉 OA", label: "钉钉 OA" },
+  { key: "钉钉 花名册", label: "钉钉 花名册" },
+  { key: "销邦邦 CRM", label: "销邦邦 CRM" },
+  { key: "简道云", label: "简道云" },
+  { key: "Teams OKR", label: "Teams OKR" },
+  { key: "Teams AMB", label: "Teams AMB" },
+];
+
+const PAYROLL_GROUP_DETAIL_FIELD_CREATE_SOURCE_FORM_OPTIONS_BY_APP = {
+  "钉钉 OA": [
+    { key: "加班", label: "加班" },
+    { key: "请假", label: "请假" },
+    { key: "外出", label: "外出" },
+    { key: "出差", label: "出差" },
+  ],
+};
+
+const PAYROLL_GROUP_DETAIL_FIELD_CREATE_SOURCE_FIELD_OPTIONS = [
+  { key: "姓名", label: "姓名" },
+  { key: "工号", label: "工号" },
+  { key: "部门", label: "部门" },
+  { key: "岗位", label: "岗位" },
+];
+
+const PAYROLL_GROUP_DETAIL_FIELD_CREATE_SOURCE_FIELD_OPTIONS_BY_APP = {
+  "销邦邦 CRM": [
+    { key: "私海客户数量", label: "私海客户数量" },
+    { key: "跟进次数", label: "跟进次数" },
+    { key: "订单金额", label: "订单金额" },
+    { key: "回款金额", label: "回款金额" },
+  ],
+  简道云: [
+    { key: "项目金额", label: "项目金额" },
+    { key: "项目利润", label: "项目利润" },
+  ],
+  "Teams OKR": [
+    { key: "绩效得分", label: "绩效得分" },
+    { key: "绩效总平均分", label: "绩效总平均分" },
+    { key: "任务完成率", label: "任务完成率" },
+    { key: "任务未完成率", label: "任务未完成率" },
+    { key: "简报提交率", label: "简报提交率" },
+    { key: "简报未提交率", label: "简报未提交率" },
+  ],
+  "Teams AMB": [
+    { key: "固定总额", label: "固定总额" },
+    { key: "变动总额", label: "变动总额" },
+    { key: "扣减总额", label: "扣减总额" },
+  ],
+};
+
+const PAYROLL_GROUP_DETAIL_FIELD_CREATE_SOURCE_FIELD_OPTIONS_BY_APP_AND_FORM = {
+  "钉钉 OA": {
+    加班: [{ key: "时长（小时）", label: "时长（小时）" }],
+    请假: [{ key: "时长", label: "时长" }],
+    外出: [{ key: "时长（天）", label: "时长（天）" }],
+    出差: [{ key: "出差天数", label: "出差天数" }],
+  },
+};
+
+const PAYROLL_GROUP_DETAIL_FIELD_CREATE_MATCH_FIELD_OPTIONS = [
+  { key: "员工 ID", label: "员工 ID" },
+  { key: "部门 ID", label: "部门 ID" },
+];
+
+const PAYROLL_GROUP_DETAIL_FIELD_CREATE_CUSTOM_EXTERNAL_AUTH_OPTIONS = [
+  { key: "none", label: "无需鉴权" },
+  { key: "bearer_token", label: "Token鉴权" },
+  { key: "api_key_header", label: "API Key（Header）" },
+  { key: "api_key_query", label: "API Key（Query参数）" },
+];
+
+const PAYROLL_GROUP_DETAIL_FIELD_CREATE_CUSTOM_EXTERNAL_MAPPING_GROUPS = [
+  {
+    key: "number",
+    label: "数字类",
+    tagClassName: "is-number",
+    options: [
+      { key: "amount", label: "金额" },
+      { key: "tax", label: "税额" },
+      { key: "current_receipt_amount", label: "本次收付金额" },
+      { key: "cost", label: "成本" },
+    ],
+  },
+  {
+    key: "text",
+    label: "文本类",
+    tagClassName: "is-text",
+    options: [
+      { key: "source_order_no", label: "源数据单号" },
+      { key: "remark", label: "备注" },
+      { key: "error_message", label: "错误信息" },
+    ],
+  },
+  {
+    key: "date",
+    label: "时间类",
+    tagClassName: "is-date",
+    options: [{ key: "date", label: "日期" }],
+  },
+];
+
+const PAYROLL_GROUP_DETAIL_FIELD_CREATE_CUSTOM_EXTERNAL_MOCK_RESPONSE = {
+  code: 200,
+  data: {
+    employee_id: "EMP001",
+    employee_name: "张三",
+    overtime_hours: 12.5,
+    base_salary: 8000,
+    bonus: 1500,
+    attendance_date: "2025-05-01",
+    department: "技术部",
+    note: "当月含法定假日加班",
+  },
+};
+
+const PAYROLL_GROUP_DETAIL_FORMULA_EDITOR_SUGGESTED_FIELDS = [
+  { key: "基本工资", label: "基本工资", sectionKey: "payment" },
+  { key: "岗位津贴", label: "岗位津贴", sectionKey: "payment" },
+  { key: "出勤天数", label: "出勤天数", sectionKey: "info" },
+  { key: "绩效系数", label: "绩效系数", sectionKey: "change" },
+  { key: "社保个人承担", label: "社保个人承担", sectionKey: "deduction" },
+];
+
+const PAYROLL_GROUP_DETAIL_FORMULA_EDITOR_FUNCTION_OPTIONS = [
+  {
+    key: "SUM",
+    label: "SUM",
+    signature: "SUM(value1, value2, ...)",
+    description: "返回多个值的总和。",
+    insertText: "SUM()",
+    caretOffset: 4,
+  },
+  {
+    key: "IF",
+    label: "IF",
+    signature: "IF(condition, trueValue, falseValue)",
+    description: "按条件返回不同结果。",
+    insertText: "IF()",
+    caretOffset: 3,
+  },
+  {
+    key: "ROUND",
+    label: "ROUND",
+    signature: "ROUND(value, digits)",
+    description: "按指定小数位进行四舍五入。",
+    insertText: "ROUND()",
+    caretOffset: 6,
+  },
+  {
+    key: "MAX",
+    label: "MAX",
+    signature: "MAX(value1, value2, ...)",
+    description: "返回一组值中的最大值。",
+    insertText: "MAX()",
+    caretOffset: 4,
+  },
+  {
+    key: "MIN",
+    label: "MIN",
+    signature: "MIN(value1, value2, ...)",
+    description: "返回一组值中的最小值。",
+    insertText: "MIN()",
+    caretOffset: 4,
+  },
+  {
+    key: "ABS",
+    label: "ABS",
+    signature: "ABS(value)",
+    description: "返回数值的绝对值。",
+    insertText: "ABS()",
+    caretOffset: 4,
+  },
+];
+
+function getPayrollGroupDetailFieldCreateSourceFormOptions(sourceApp) {
+  return PAYROLL_GROUP_DETAIL_FIELD_CREATE_SOURCE_FORM_OPTIONS_BY_APP[String(sourceApp || "")] || [];
+}
+
+function getPayrollGroupDetailFieldCreateSourceFieldOptions(sourceApp, sourceForm) {
+  const sourceFieldOptionsByApp = PAYROLL_GROUP_DETAIL_FIELD_CREATE_SOURCE_FIELD_OPTIONS_BY_APP[String(sourceApp || "")] || null;
+  if (sourceFieldOptionsByApp) {
+    return sourceFieldOptionsByApp;
+  }
+  const sourceFieldOptionsByForm =
+    PAYROLL_GROUP_DETAIL_FIELD_CREATE_SOURCE_FIELD_OPTIONS_BY_APP_AND_FORM[String(sourceApp || "")] || null;
+  if (sourceFieldOptionsByForm) {
+    return sourceFieldOptionsByForm[String(sourceForm || "")] || [];
+  }
+  return PAYROLL_GROUP_DETAIL_FIELD_CREATE_SOURCE_FIELD_OPTIONS;
+}
+
+function isPayrollGroupDetailCustomExternalSource(sourceApp) {
+  return String(sourceApp || "") === PAYROLL_GROUP_DETAIL_FIELD_CREATE_CUSTOM_EXTERNAL_APP_KEY;
+}
+
+function getPayrollGroupDetailCustomExternalAuthOption(authType) {
+  return (
+    PAYROLL_GROUP_DETAIL_FIELD_CREATE_CUSTOM_EXTERNAL_AUTH_OPTIONS.find((item) => item.key === authType) ||
+    PAYROLL_GROUP_DETAIL_FIELD_CREATE_CUSTOM_EXTERNAL_AUTH_OPTIONS[0]
+  );
+}
+
+function isPayrollGroupDetailCustomExternalAuthValueRequired(authType) {
+  return getPayrollGroupDetailCustomExternalAuthOption(authType).key !== "none";
+}
+
+function isPayrollGroupDetailCustomExternalUrlValid(url) {
+  return /^https?:\/\/\S+/i.test(String(url || "").trim());
+}
+
+function inferPayrollGroupDetailCustomExternalFieldType(value) {
+  return typeof value === "number" && Number.isFinite(value) ? "number" : "string";
+}
+
+function isPayrollGroupDetailCustomExternalDateLikeField(field) {
+  const text = String(field?.valuePreview || field?.label || field?.path || "");
+  return /^\d{4}-\d{2}-\d{2}(?:\s|T|$)/.test(text) || /(?:date|time|日期|时间)/i.test(String(field?.path || ""));
+}
+
+function getPayrollGroupDetailCustomExternalMappingOptions() {
+  return PAYROLL_GROUP_DETAIL_FIELD_CREATE_CUSTOM_EXTERNAL_MAPPING_GROUPS.flatMap((group) => group.options);
+}
+
+function getPayrollGroupDetailCustomExternalMappingGroupByFieldType(fieldType) {
+  const groupKey = fieldType === "number" ? "number" : fieldType === "date" ? "date" : "text";
+  return PAYROLL_GROUP_DETAIL_FIELD_CREATE_CUSTOM_EXTERNAL_MAPPING_GROUPS.find((group) => group.key === groupKey) || null;
+}
+
+function getPayrollGroupDetailCustomExternalMappingOptionsForField(field) {
+  return getPayrollGroupDetailCustomExternalMappingGroupByFieldType(field?.fieldType)?.options || [];
+}
+
+function getPayrollGroupDetailCustomExternalMappingOption(mappingKey) {
+  return getPayrollGroupDetailCustomExternalMappingOptions().find((option) => option.key === mappingKey) || null;
+}
+
+function getPayrollGroupDetailCustomExternalMappingLabel(mappingKey) {
+  return getPayrollGroupDetailCustomExternalMappingOption(mappingKey)?.label || "";
+}
+
+function flattenPayrollGroupDetailCustomExternalFields(value, path = []) {
+  if (value && typeof value === "object" && !Array.isArray(value)) {
+    return Object.entries(value).flatMap(([key, childValue]) =>
+      flattenPayrollGroupDetailCustomExternalFields(childValue, [...path, key])
+    );
+  }
+  if (Array.isArray(value)) {
+    return value.flatMap((childValue, index) => flattenPayrollGroupDetailCustomExternalFields(childValue, [...path, String(index)]));
+  }
+  if (!path.length) {
+    return [];
+  }
+  const fieldPath = path.join(".");
+  const fieldType = /^\d{4}-\d{2}-\d{2}(?:\s|T|$)/.test(String(value || ""))
+    ? "date"
+    : inferPayrollGroupDetailCustomExternalFieldType(value);
+  return [
+    {
+      path: fieldPath,
+      label: fieldPath,
+      fieldType,
+      valuePreview: value === null || value === undefined ? "" : String(value),
+    },
+  ];
+}
+
+function getPayrollGroupDetailCustomExternalMockFields() {
+  return flattenPayrollGroupDetailCustomExternalFields(PAYROLL_GROUP_DETAIL_FIELD_CREATE_CUSTOM_EXTERNAL_MOCK_RESPONSE);
+}
+
+function normalizePayrollGroupDetailCustomExternalFields(fields) {
+  const sourceFields = Array.isArray(fields) ? fields : [];
+  const seen = new Set();
+  return sourceFields
+    .map((field) => {
+      const path = String(field?.path || field?.key || "").trim();
+      if (!path || seen.has(path)) {
+        return null;
+      }
+      seen.add(path);
+      const fieldType = ["number", "date"].includes(field?.fieldType) ? field.fieldType : "string";
+      return {
+        path,
+        label: String(field?.label || path),
+        fieldType,
+        valuePreview: String(field?.valuePreview || ""),
+      };
+    })
+    .filter(Boolean);
+}
+
+function getPayrollGroupDetailCustomExternalFieldByPath(fields, fieldPath) {
+  return normalizePayrollGroupDetailCustomExternalFields(fields).find((field) => field.path === fieldPath) || null;
+}
+
+function canSelectPayrollGroupDetailCustomExternalField(sectionKey, field) {
+  return String(sectionKey || "") === "info" || field?.fieldType === "number";
+}
+
+function normalizePayrollGroupDetailCustomExternalMappings(source, fields, sectionKey) {
+  const sourceMappings = source && typeof source === "object" ? source : {};
+  const nextMappings = {};
+  const fieldOptions = normalizePayrollGroupDetailCustomExternalFields(fields);
+  const applyMapping = (fieldPath, mappingField) => {
+    const selectedField = getPayrollGroupDetailCustomExternalFieldByPath(fieldOptions, fieldPath);
+    const selectedMapping = getPayrollGroupDetailCustomExternalMappingOption(mappingField);
+    const allowedMappings = getPayrollGroupDetailCustomExternalMappingOptionsForField(selectedField);
+    if (
+      !selectedField ||
+      !selectedMapping ||
+      !canSelectPayrollGroupDetailCustomExternalField(sectionKey, selectedField) ||
+      !allowedMappings.some((option) => option.key === selectedMapping.key)
+    ) {
+      return;
+    }
+    nextMappings[selectedField.path] = selectedMapping.key;
+  };
+
+  const customExternalMappings = sourceMappings.customExternalMappings || sourceMappings.mappings;
+  if (Array.isArray(customExternalMappings)) {
+    customExternalMappings.forEach((item) => {
+      applyMapping(item?.fieldPath || item?.field_path || item?.path, item?.mappingField || item?.mapping_field || item?.field);
+    });
+  } else if (customExternalMappings && typeof customExternalMappings === "object") {
+    Object.entries(customExternalMappings).forEach(([fieldPath, mappingField]) => {
+      applyMapping(fieldPath, mappingField);
+    });
+  }
+
+  const configMappings = sourceMappings.customExternalConfig?.field_mappings || sourceMappings.customExternalConfig?.fieldMappings;
+  if (Array.isArray(configMappings)) {
+    configMappings.forEach((item) => {
+      applyMapping(item?.field_path || item?.fieldPath || item?.path, item?.mapping_field || item?.mappingField || item?.field);
+    });
+  }
+
+  applyMapping(
+    sourceMappings.customExternalFieldPath || sourceMappings.customExternalConfig?.fieldPath || sourceMappings.customExternalConfig?.field_path,
+    sourceMappings.customExternalMappingField ||
+      sourceMappings.customExternalConfig?.mappingField ||
+      sourceMappings.customExternalConfig?.mapping_field ||
+      sourceMappings.customExternalMapField
+  );
+
+  return nextMappings;
+}
+
+function getPayrollGroupDetailCustomExternalMappingEntries(overlay) {
+  const fields = normalizePayrollGroupDetailCustomExternalFields(overlay?.customExternalFields);
+  const mappings = normalizePayrollGroupDetailCustomExternalMappings(overlay, fields, overlay?.sectionKey);
+  return Object.entries(mappings)
+    .map(([fieldPath, mappingField]) => {
+      const field = getPayrollGroupDetailCustomExternalFieldByPath(fields, fieldPath);
+      const mapping = getPayrollGroupDetailCustomExternalMappingOption(mappingField);
+      return field && mapping ? { field, mapping } : null;
+    })
+    .filter(Boolean);
+}
+
+function canFetchPayrollGroupDetailCustomExternalFields(overlay) {
+  const authType = getPayrollGroupDetailCustomExternalAuthOption(overlay?.customExternalAuthType).key;
+  return (
+    isPayrollGroupDetailCustomExternalUrlValid(overlay?.customExternalUrl) &&
+    (!isPayrollGroupDetailCustomExternalAuthValueRequired(authType) || !!String(overlay?.customExternalAuthValue || "").trim())
+  );
+}
+
+function createPayrollGroupDetailFormulaEditorState(source, overrides = {}) {
+  const formulaConfig = String(source?.formulaConfig || "");
+  const formulaDescription = String(source?.formulaDescription || "");
+  return {
+    open: false,
+    draftFormula: formulaConfig,
+    draftDescription: formulaDescription,
+    fieldKeyword: "",
+    functionKeyword: "",
+    selectionStart: formulaConfig.length,
+    selectionEnd: formulaConfig.length,
+    scrollTop: 0,
+    scrollLeft: 0,
+    ...overrides,
+  };
+}
+
+function normalizePayrollGroupDetailFormulaEditorState(formulaEditor, source) {
+  const base = createPayrollGroupDetailFormulaEditorState(source);
+  const nextState = formulaEditor && typeof formulaEditor === "object" ? formulaEditor : {};
+  const draftFormula = String(nextState.draftFormula ?? base.draftFormula);
+  const selectionStart =
+    typeof nextState.selectionStart === "number" && Number.isFinite(nextState.selectionStart)
+      ? Math.max(0, Math.min(draftFormula.length, nextState.selectionStart))
+      : Math.min(draftFormula.length, base.selectionStart);
+  const selectionEnd =
+    typeof nextState.selectionEnd === "number" && Number.isFinite(nextState.selectionEnd)
+      ? Math.max(selectionStart, Math.min(draftFormula.length, nextState.selectionEnd))
+      : selectionStart;
+
+  return {
+    open: !!nextState.open,
+    draftFormula,
+    draftDescription: String(nextState.draftDescription ?? base.draftDescription),
+    fieldKeyword: String(nextState.fieldKeyword || ""),
+    functionKeyword: String(nextState.functionKeyword || ""),
+    selectionStart,
+    selectionEnd,
+    scrollTop:
+      typeof nextState.scrollTop === "number" && Number.isFinite(nextState.scrollTop) ? Math.max(0, nextState.scrollTop) : 0,
+    scrollLeft:
+      typeof nextState.scrollLeft === "number" && Number.isFinite(nextState.scrollLeft) ? Math.max(0, nextState.scrollLeft) : 0,
+  };
+}
+
+function getPayrollGroupDetailFormulaFunctionOption(functionKey) {
+  return PAYROLL_GROUP_DETAIL_FORMULA_EDITOR_FUNCTION_OPTIONS.find((item) => item.key === functionKey) || null;
+}
+
+function getPayrollGroupDetailFormulaReferenceOptions(overlay) {
+  const currentName = String(overlay?.name || "").trim();
+  const currentSectionKey = String(overlay?.sectionKey || "");
+  const referenceMap = new Map();
+
+  [...PAYROLL_GROUP_DETAIL_FORMULA_EDITOR_SUGGESTED_FIELDS, ...getPayrollGroupDetailFieldRows()]
+    .map((item) =>
+      "sectionKey" in item
+        ? {
+            key: item.key || item.name,
+            label: item.label || item.name,
+            sectionKey: item.sectionKey,
+          }
+        : item
+    )
+    .forEach((item) => {
+      const key = String(item.key || item.name || item.label || "").trim();
+      if (!key || key === currentName || referenceMap.has(key)) {
+        return;
+      }
+      referenceMap.set(key, {
+        key,
+        label: String(item.label || item.name || key),
+        sectionKey: String(item.sectionKey || ""),
+      });
+    });
+
+  return [...referenceMap.values()].sort((left, right) => {
+    const leftIsCurrentSection = left.sectionKey === currentSectionKey;
+    const rightIsCurrentSection = right.sectionKey === currentSectionKey;
+    if (leftIsCurrentSection !== rightIsCurrentSection) {
+      return leftIsCurrentSection ? -1 : 1;
+    }
+    return left.label.localeCompare(right.label, "zh-Hans-CN");
+  });
+}
+
+function insertPayrollGroupFormulaText(source, insertText, selectionStart, selectionEnd, caretOffset = insertText.length) {
+  const safeSource = String(source || "");
+  const start = typeof selectionStart === "number" ? Math.max(0, Math.min(safeSource.length, selectionStart)) : safeSource.length;
+  const end = typeof selectionEnd === "number" ? Math.max(start, Math.min(safeSource.length, selectionEnd)) : start;
+  const nextValue = `${safeSource.slice(0, start)}${insertText}${safeSource.slice(end)}`;
+  const nextCaret = Math.max(start, Math.min(start + caretOffset, nextValue.length));
+  return {
+    value: nextValue,
+    selectionStart: nextCaret,
+    selectionEnd: nextCaret,
+  };
+}
+
+function getPayrollGroupDetailFieldCreateDefaultMode(sectionKey) {
+  return sectionKey === "info" ? "auto" : "manual";
+}
+
+function getPayrollGroupDetailFieldCreateDefaultType(mode) {
+  return mode === "auto" ? "formula" : "text";
+}
+
+function getPayrollGroupDetailFieldCreateTypes(mode) {
+  return PAYROLL_GROUP_DETAIL_FIELD_CREATE_TYPE_OPTIONS[mode] || PAYROLL_GROUP_DETAIL_FIELD_CREATE_TYPE_OPTIONS.manual;
+}
+
+function normalizePayrollGroupDetailFieldCreateOverlay(overlay) {
+  const source = overlay && typeof overlay === "object" ? overlay : {};
+  const submitMode = source.submitMode === "edit" ? "edit" : "create";
+  const editingFieldId = submitMode === "edit" ? String(source.editingFieldId || source.id || "").trim() : "";
+  const sectionKey = PAYROLL_GROUP_DETAIL_SECTION_OPTIONS.some((item) => item.key === source.sectionKey)
+    ? source.sectionKey
+    : "info";
+  const modeValue = String(source.mode || source.entryMode || "");
+  const mode = modeValue === "auto" ? "auto" : "manual";
+  const isInfoSection = sectionKey === "info";
+  const typeOptions = getPayrollGroupDetailFieldCreateTypes(mode);
+  const itemType = isInfoSection && typeOptions.some((item) => item.key === source.itemType)
+    ? source.itemType
+    : isInfoSection
+      ? getPayrollGroupDetailFieldCreateDefaultType(mode)
+      : null;
+  const sourceAppValue = String(source.sourceApp || "");
+  const sourceApp = PAYROLL_GROUP_DETAIL_FIELD_CREATE_SOURCE_APP_OPTIONS.some((item) => item.key === sourceAppValue)
+    ? sourceAppValue
+    : "";
+  const sourceFormOptions = getPayrollGroupDetailFieldCreateSourceFormOptions(sourceApp);
+  const sourceFormValue = String(source.sourceForm || "");
+  const sourceForm = sourceFormOptions.some((item) => item.key === sourceFormValue)
+    ? sourceFormValue
+    : "";
+  const sourceFieldOptions = getPayrollGroupDetailFieldCreateSourceFieldOptions(sourceApp, sourceForm);
+  const sourceFieldValue = String(source.sourceField || "");
+  const requiresSourceForm = sourceFormOptions.length > 0;
+  const sourceField =
+    sourceApp &&
+    (!requiresSourceForm || sourceForm) &&
+    sourceFieldOptions.some((item) => item.key === sourceFieldValue)
+      ? sourceFieldValue
+      : "";
+  const matchFieldValue = String(source.matchField || "");
+  const matchField =
+    sourceField && PAYROLL_GROUP_DETAIL_FIELD_CREATE_MATCH_FIELD_OPTIONS.some((item) => item.key === matchFieldValue)
+      ? matchFieldValue
+      : "";
+  const customExternalConfig =
+    source.customExternalConfig && typeof source.customExternalConfig === "object" ? source.customExternalConfig : {};
+  const customExternalAuthTypeValue = String(
+    source.customExternalAuthType || customExternalConfig.authType || customExternalConfig.auth_type || "none"
+  );
+  const customExternalAuthType = getPayrollGroupDetailCustomExternalAuthOption(customExternalAuthTypeValue).key;
+  const customExternalFields = normalizePayrollGroupDetailCustomExternalFields(
+    source.customExternalFields || customExternalConfig.fields
+  );
+  const customExternalFieldPathValue = String(
+    source.customExternalFieldPath || customExternalConfig.fieldPath || customExternalConfig.field_path || ""
+  );
+  const customExternalSelectedField = getPayrollGroupDetailCustomExternalFieldByPath(
+    customExternalFields,
+    customExternalFieldPathValue
+  );
+  const customExternalFieldPath =
+    customExternalSelectedField && canSelectPayrollGroupDetailCustomExternalField(sectionKey, customExternalSelectedField)
+      ? customExternalSelectedField.path
+      : customExternalFields.length
+        ? ""
+        : customExternalFieldPathValue;
+  const customExternalFieldType = customExternalSelectedField
+    ? customExternalSelectedField.fieldType
+    : String(source.customExternalFieldType || customExternalConfig.fieldType || customExternalConfig.field_type || "");
+  const customExternalMappingFieldValue = String(
+    source.customExternalMappingField ||
+      customExternalConfig.mappingField ||
+      customExternalConfig.mapping_field ||
+      source.customExternalMapField ||
+      ""
+  );
+  const customExternalMappingField = getPayrollGroupDetailCustomExternalMappingOption(customExternalMappingFieldValue)
+    ? customExternalMappingFieldValue
+    : "";
+  const customExternalMappings = normalizePayrollGroupDetailCustomExternalMappings(
+    { ...source, customExternalConfig },
+    customExternalFields,
+    sectionKey
+  );
+  const customExternalMappingEntries = Object.entries(customExternalMappings);
+  const primaryCustomExternalFieldPath = customExternalMappingEntries[0]?.[0] || customExternalFieldPath;
+  const primaryCustomExternalMappingField = customExternalMappingEntries[0]?.[1] || customExternalMappingField;
+  const primaryCustomExternalSelectedField = getPayrollGroupDetailCustomExternalFieldByPath(
+    customExternalFields,
+    primaryCustomExternalFieldPath
+  );
+  const customExternalFetchStatusValue = String(source.customExternalFetchStatus || "");
+  const customExternalFetchStatus = ["idle", "loading", "success", "error"].includes(customExternalFetchStatusValue)
+    ? customExternalFetchStatusValue
+    : customExternalFields.length
+      ? "success"
+      : "idle";
+
+  return {
+    type: "payroll-group-field-create",
+    submitMode,
+    editingFieldId,
+    sectionKey,
+    name: String(source.name || ""),
+    mode,
+    itemType,
+    formulaConfig: String(source.formulaConfig || ""),
+    formulaDescription: String(source.formulaDescription || ""),
+    formulaEditor: normalizePayrollGroupDetailFormulaEditorState(source.formulaEditor, source),
+    sourceApp,
+    sourceForm,
+    sourceField,
+    matchField,
+    customExternalUrl: String(source.customExternalUrl || customExternalConfig.url || ""),
+    customExternalAuthType,
+    customExternalAuthValue: String(source.customExternalAuthValue || customExternalConfig.authValue || customExternalConfig.auth_value || ""),
+    customExternalAuthValueVisible: !!source.customExternalAuthValueVisible,
+    customExternalFetchStatus,
+    customExternalFetchError: String(source.customExternalFetchError || ""),
+    customExternalRequestId: String(source.customExternalRequestId || ""),
+    customExternalFields,
+    customExternalFieldPath: primaryCustomExternalFieldPath,
+    customExternalFieldType: primaryCustomExternalSelectedField?.fieldType || customExternalFieldType,
+    customExternalMappingField: primaryCustomExternalMappingField,
+    customExternalMappings,
+    defaultText: String(source.defaultText || ""),
+    defaultNumber: String(source.defaultNumber || ""),
+  };
+}
+
+function buildPayrollGroupFieldCreateOverlay(sectionKey) {
+  return normalizePayrollGroupDetailFieldCreateOverlay({
+    sectionKey,
+    name: "",
+    mode: getPayrollGroupDetailFieldCreateDefaultMode(sectionKey),
+    itemType: getPayrollGroupDetailFieldCreateDefaultType(getPayrollGroupDetailFieldCreateDefaultMode(sectionKey)),
+  });
+}
+
+function buildPayrollGroupFieldEditOverlay(field) {
+  return normalizePayrollGroupDetailFieldCreateOverlay({
+    ...field,
+    submitMode: "edit",
+    editingFieldId: field.id,
+    mode: field.entryMode || getPayrollGroupDetailFieldCreateDefaultMode(field.sectionKey),
+    itemType:
+      field.itemType ||
+      getPayrollGroupDetailFieldCreateDefaultType(field.entryMode || getPayrollGroupDetailFieldCreateDefaultMode(field.sectionKey)),
+  });
+}
+
+function getPayrollGroupDetailStatusLabel(statusKey) {
+  return PAYROLL_GROUP_DETAIL_STATUS_OPTIONS.find((item) => item.key === statusKey)?.label || "全部状态";
+}
+
+function getFilteredPayrollGroupSettingsRows() {
+  const filters = getPayrollGroupSettingsFilters();
+  const keyword = filters.keyword.trim().toLowerCase();
+  return getPayrollGroupSettingsRows().filter((row) => {
+    if (filters.creator !== "all" && row.creator !== filters.creator) {
+      return false;
+    }
+
+    if (!keyword) {
+      return true;
+    }
+
+    return [row.name, row.creator].some((value) => String(value || "").toLowerCase().includes(keyword));
+  });
+}
+
+function getPayrollGroupSettingsRow(rowId) {
+  return getPayrollGroupSettingsRows().find((row) => row.id === rowId) || null;
+}
+
+function getPayrollGroupSettingsRowMenuId(rowId) {
+  return `payroll-group:${rowId}`;
+}
+
+function isPayrollGroupRowMenuId(menuId) {
+  return String(menuId || "").startsWith("payroll-group:");
+}
+
+function isPayrollGroupSettingsNameTaken(name, rows = getPayrollGroupSettingsRows()) {
+  const normalizedName = String(name || "").trim().toLowerCase();
+  if (!normalizedName) {
+    return false;
+  }
+  return rows.some((row) => String(row.name || "").trim().toLowerCase() === normalizedName);
+}
+
+function makePayrollGroupCopyName(sourceName, rows = getPayrollGroupSettingsRows()) {
+  const baseName = `${String(sourceName || "").trim()}（复制）`;
+  if (!isPayrollGroupSettingsNameTaken(baseName, rows)) {
+    return baseName;
+  }
+
+  let index = 2;
+  while (isPayrollGroupSettingsNameTaken(`${baseName}${index}`, rows)) {
+    index += 1;
+  }
+  return `${baseName}${index}`;
+}
+
+function ensurePayrollGroupCreatorFilterVisible(creator) {
+  if (state.payrollGroupSettings.creator !== "all" && state.payrollGroupSettings.creator !== creator) {
+    state.payrollGroupSettings.creator = "all";
+  }
+}
+
+function getPayrollGroupSettingsPagedRows(rows) {
+  const totalPages = Math.max(1, Math.ceil(rows.length / state.pageSize));
+  const currentPage = Math.min(state.payrollGroupSettings.page, totalPages);
+  if (currentPage !== state.payrollGroupSettings.page) {
+    state.payrollGroupSettings.page = currentPage;
+  }
+  const start = (currentPage - 1) * state.pageSize;
+  return {
+    page: currentPage,
+    totalPages,
+    items: rows.slice(start, start + state.pageSize),
+  };
+}
+
+function setPayrollGroupSettingsPage(nextPage) {
+  state.payrollGroupSettings.page = Math.max(1, Number(nextPage) || 1);
+}
+
+function resetPayrollGroupSettingsPaging() {
+  setPayrollGroupSettingsPage(1);
+}
+
 function getGoal(goalId, tabKey = getTabKey()) {
   return getActiveGoalList(tabKey).find((goal) => goal.id === goalId);
 }
@@ -1851,38 +3177,6 @@ function markGuideAutoStarted(type, userKey = state.currentUserKey) {
   state.guideAutoStartedByUser = {
     ...(state.guideAutoStartedByUser || {}),
     [getGuideAutoStartKey(type, userKey)]: true,
-  };
-}
-
-function isGuideUsagePromptCompleted(userKey = state.currentUserKey) {
-  return !!(
-    state.guideUsagePromptCompletedByUser && state.guideUsagePromptCompletedByUser[getGuideUserKey(userKey)]
-  );
-}
-
-function isGuideUsagePromptPending(userKey = state.currentUserKey) {
-  return !!(
-    state.guideUsagePromptPendingByUser && state.guideUsagePromptPendingByUser[getGuideUserKey(userKey)]
-  );
-}
-
-function queueGuideUsagePrompt(userKey = state.currentUserKey) {
-  const nextUserKey = getGuideUserKey(userKey);
-  state.guideUsagePromptPendingByUser = {
-    ...(state.guideUsagePromptPendingByUser || {}),
-    [nextUserKey]: true,
-  };
-}
-
-function completeGuideUsagePrompt(userKey = state.currentUserKey) {
-  const nextUserKey = getGuideUserKey(userKey);
-  state.guideUsagePromptPendingByUser = {
-    ...(state.guideUsagePromptPendingByUser || {}),
-    [nextUserKey]: false,
-  };
-  state.guideUsagePromptCompletedByUser = {
-    ...(state.guideUsagePromptCompletedByUser || {}),
-    [nextUserKey]: true,
   };
 }
 
@@ -2880,17 +4174,6 @@ function isLaunchAdvanceGuideStep(step) {
   return isGuideTypeStep("launch-advance", step);
 }
 
-function isGuideMenuGuideStep(step) {
-  return isGuideTypeStep("guide-menu", step);
-}
-
-function getGuideRequirementCopy(type) {
-  if (type === "launch-advance") {
-    return "需具备“目标管理”页面权限，且目标库中至少有 1 个完整可发起目标";
-  }
-  return "需具备“目标配置”页面权限";
-}
-
 function getGuideStartBlockedMessage(type, profile = getCurrentUserProfile()) {
   if (type === "launch-advance") {
     if (!isPageAllowedForProfile("goal-management", profile)) {
@@ -2907,18 +4190,6 @@ function getGuideStartBlockedMessage(type, profile = getCurrentUserProfile()) {
   }
 
   return "";
-}
-
-function renderTopbarGuideOption(action, title, type) {
-  return `
-    <div class="topbar-help-option-wrap">
-      <button class="dropdown-option topbar-help-option" data-action="${escapeHtml(action)}" type="button" role="menuitem">
-        <span class="topbar-help-option-title">${escapeHtml(title)}</span>
-      </button>
-      <div class="topbar-help-tooltip" aria-hidden="true">${escapeHtml(getGuideRequirementCopy(type))}</div>
-      <div class="topbar-help-tooltip-arrow" aria-hidden="true"></div>
-    </div>
-  `;
 }
 
 function startConfigPrepGuideByType(type, startStep = 1) {
@@ -2949,24 +4220,10 @@ function startLaunchAdvanceGuide(startStep = 1) {
   return startConfigPrepGuideByType("launch-advance", startStep);
 }
 
-function startGuideUsagePromptGuide() {
-  closeTransientPanels();
-  clearGoalConfigEditing();
-  state.overlay = null;
-  state.configPrepGuide = { type: "guide-menu", step: 1 };
-  return true;
-}
-
 function closeConfigPrepGuide(showCompletedToast = false) {
   const guideType = state.configPrepGuide ? getConfigPrepGuideType() : "";
   const guideMeta = state.configPrepGuide ? getConfigPrepGuideMeta(guideType) : null;
   state.configPrepGuide = null;
-
-  if (guideType === "guide-menu") {
-    completeGuideUsagePrompt();
-  } else if (guideType && !isGuideUsagePromptPending() && !isGuideUsagePromptCompleted()) {
-    queueGuideUsagePrompt();
-  }
 
   if (showCompletedToast && guideMeta && guideMeta.completedToast) {
     showToast(guideMeta.completedToast);
@@ -3019,8 +4276,11 @@ function maybeStartAutomaticGuide() {
     return false;
   }
 
-  if (isGuideUsagePromptPending() && !isGuideUsagePromptCompleted()) {
-    return startGuideUsagePromptGuide();
+  const pendingManualGuidePage = state.pendingManualGuidePage;
+  state.pendingManualGuidePage = null;
+
+  if (!pendingManualGuidePage || pendingManualGuidePage !== state.activePage) {
+    return false;
   }
 
   const currentUser = getCurrentUserProfile();
@@ -3894,7 +5154,7 @@ function renderDropdownPanel(dropdownKey, content, className = "dropdown-panel",
 
   const extraAttributes = attributes ? ` ${attributes.trim()}` : "";
   return `
-    <div class="${className}" data-dropdown-state="${getDropdownMotionState(dropdownKey)}"${extraAttributes}>
+    <div class="${className}" data-dropdown-key="${escapeHtml(dropdownKey)}" data-dropdown-state="${getDropdownMotionState(dropdownKey)}"${extraAttributes}>
       ${content}
     </div>
   `;
@@ -3917,7 +5177,7 @@ function renderTransientPanel(panelType, panelId, isOpen, content, className, at
 
   const extraAttributes = attributes ? ` ${attributes.trim()}` : "";
   return `
-    <div class="${className}" data-dropdown-state="${motionState}"${extraAttributes}>
+    <div class="${className}" data-transient-panel-key="${escapeHtml(getTransientPanelKey(panelType, panelId))}" data-dropdown-state="${motionState}"${extraAttributes}>
       ${content}
     </div>
   `;
@@ -3950,9 +5210,7 @@ function setGoalConfigProcessMenuId(nextId) {
 function renderBreadcrumbSeparator() {
   return `
     <span class="breadcrumb-separator" aria-hidden="true">
-      <svg class="breadcrumb-separator-icon" viewBox="0 0 5 8.5" fill="none" xmlns="http://www.w3.org/2000/svg">
-        <path d="M0.75 0.75L4.25 4.25L0.75 7.75" stroke="#8F959E" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" />
-      </svg>
+      <img class="breadcrumb-separator-icon" src="./assets/breadcrumb-chevron.svg" alt="" />
     </span>
   `;
 }
@@ -4163,83 +5421,68 @@ function renderSidebar() {
   `;
 }
 
-function renderTopbar() {
-  const currentUser = getCurrentUserProfile();
+function renderPayrollGroupSwitchControl() {
+  const payrollGroupOptions = getPayrollGroupSwitchOptions();
+  const currentPayrollGroup = getCurrentPayrollGroupSwitchOption();
+
   return `
-    <header class="topbar">
+    <button
+      class="user-chip user-chip-button ${state.openDropdown === "payroll-group-switch" ? "is-open" : ""}"
+      data-action="toggle-dropdown"
+      data-value="payroll-group-switch"
+      type="button"
+      aria-haspopup="menu"
+      aria-expanded="${state.openDropdown === "payroll-group-switch" ? "true" : "false"}"
+      aria-label="切换薪酬组"
+    >
+      <div class="avatar user-chip-avatar">${escapeHtml(currentPayrollGroup.avatar)}</div>
+      <div class="user-meta">
+        <div class="user-name">${escapeHtml(currentPayrollGroup.label)}</div>
+        <div class="role-tag">${escapeHtml(currentPayrollGroup.subtext)}</div>
+      </div>
+      <span class="user-switch-arrow" aria-hidden="true">
+        <img class="user-switch-arrow-icon" src="./assets/chevron-down.svg" alt="" />
+      </span>
+    </button>
+    ${renderDropdownPanel(
+      "payroll-group-switch",
+      `
+        ${payrollGroupOptions
+          .map(
+            (group) => `
+              <button
+                class="dropdown-option user-switch-option ${group.key === currentPayrollGroup.key ? "is-active" : ""}"
+                data-action="switch-payroll-group"
+                data-value="${group.key}"
+                type="button"
+                role="menuitemradio"
+                aria-checked="${group.key === currentPayrollGroup.key ? "true" : "false"}"
+                ${group.key ? "" : "disabled"}
+              >
+                <span class="user-switch-option-label truncate" title="${escapeHtml(group.label)}">${escapeHtml(group.label)}</span>
+              </button>
+            `
+          )
+          .join("")}
+      `,
+      "dropdown-panel user-switch-panel",
+      'role="menu" aria-label="薪酬组切换"'
+    )}
+  `;
+}
+
+function renderTopbar() {
+  const isSidebarCollapsed = !!state.sidebarCollapsed;
+  return `
+    <header class="topbar ${isSidebarCollapsed ? "is-sidebar-collapsed" : ""}">
       <button class="brand" data-action="request-demo-reset" type="button" aria-label="重置演示缓存">
-        <img class="brand-logo" src="./assets/logo.png" alt="Teams OKR" />
-        <div class="brand-name">Teams OKR</div>
+        <img class="brand-logo" src="./assets/Logo.svg" alt="Teams 薪酬" />
+        <div class="brand-name" aria-hidden="true"><span class="brand-name-en">Teams</span> <span class="brand-name-cn">薪酬</span></div>
       </button>
       <div class="topbar-right">
-        <div class="topbar-help">
-          <button
-            class="icon-button topbar-icon-trigger ${state.openDropdown === "help-menu" ? "is-open" : ""}"
-            data-action="toggle-dropdown"
-            data-value="help-menu"
-            data-guide-id="guide-help-trigger"
-            type="button"
-            aria-haspopup="menu"
-            aria-expanded="${state.openDropdown === "help-menu" ? "true" : "false"}"
-            aria-label="打开帮助菜单"
-          >
-            <img src="./assets/help.svg" alt="" />
-          </button>
-          ${renderDropdownPanel(
-            "help-menu",
-            `
-              ${renderTopbarGuideOption("start-config-prep-guide", "目标与流程", "goal-process")}
-              ${renderTopbarGuideOption("start-launch-advance-guide", "发起与推进", "launch-advance")}
-            `,
-            "dropdown-panel topbar-help-menu",
-            'role="menu" aria-label="帮助菜单"'
-          )}
-        </div>
         <button class="icon-button" type="button"><img src="./assets/bell.svg" alt="" /></button>
         <div class="topbar-user-switch">
-          <button
-            class="user-chip user-chip-button ${state.openDropdown === "user-switch" ? "is-open" : ""}"
-            data-action="toggle-dropdown"
-            data-value="user-switch"
-            type="button"
-            aria-haspopup="menu"
-            aria-expanded="${state.openDropdown === "user-switch" ? "true" : "false"}"
-            aria-label="切换当前查看角色"
-          >
-            <div class="avatar user-chip-avatar">${escapeHtml(currentUser.avatar)}</div>
-            <div class="user-meta">
-              <div class="user-name">${escapeHtml(currentUser.label)}</div>
-              <div class="role-tag">${escapeHtml(currentUser.roleLabel)}</div>
-            </div>
-            <span class="user-switch-arrow" aria-hidden="true">
-              <img class="user-switch-arrow-icon" src="./assets/chevron-down.svg" alt="" />
-            </span>
-          </button>
-          ${renderDropdownPanel(
-            "user-switch",
-            `
-              ${USER_PROFILES.map(
-                (profile) => `
-                  <button
-                    class="dropdown-option user-switch-option ${profile.key === currentUser.key ? "is-active" : ""}"
-                    data-action="switch-user"
-                    data-value="${profile.key}"
-                    type="button"
-                    role="menuitemradio"
-                    aria-checked="${profile.key === currentUser.key ? "true" : "false"}"
-                  >
-                    <span class="avatar user-switch-option-avatar">${escapeHtml(profile.avatar)}</span>
-                    <span class="dropdown-meta">
-                      <span>${escapeHtml(profile.label)}</span>
-                      <span class="dropdown-subtext">${escapeHtml(profile.roleLabel)}</span>
-                    </span>
-                  </button>
-                `
-              ).join("")}
-            `,
-            "dropdown-panel user-switch-panel",
-            'role="menu" aria-label="角色切换"'
-          )}
+          ${renderPayrollGroupSwitchControl()}
         </div>
       </div>
     </header>
@@ -4990,6 +6233,974 @@ function renderDevelopingPage(pageKey) {
       </div>
     </main>
   `;
+}
+
+function renderPayrollGroupSettingsPagination(rows, totalPages, currentPage) {
+  return `
+    <div class="pagination">
+      <div class="pagination-total">共 ${rows.length} 条</div>
+      <div class="pagination-controls">
+        <button class="page-button" data-action="payroll-group-page-prev" type="button" ${currentPage <= 1 ? "disabled" : ""}>
+          <img class="payroll-group-pagination-arrow" src="./assets/page-prev.svg" alt="" />
+        </button>
+        <div class="page-current">${currentPage}</div>
+        <button class="page-button" data-action="payroll-group-page-next" type="button" ${currentPage >= totalPages ? "disabled" : ""}>
+          <img class="payroll-group-pagination-arrow" src="./assets/page-next.svg" alt="" />
+        </button>
+      </div>
+      <div class="page-size">
+        <button class="page-size-button payroll-group-page-size-button ${isDropdownOpen("payroll-group-page-size") ? "is-open" : ""}" data-action="toggle-dropdown" data-value="payroll-group-page-size" type="button" aria-expanded="${isDropdownOpen("payroll-group-page-size") ? "true" : "false"}">
+          <span>${state.pageSize} / 页</span>
+          <img class="payroll-group-page-size-chevron" src="./assets/chevron-down.svg" alt="" />
+        </button>
+        ${renderDropdownPanel(
+          "payroll-group-page-size",
+          `
+            ${PAGE_SIZE_OPTIONS.map(
+              (item) => `
+                <button class="dropdown-option ${state.pageSize === item ? "is-active" : ""}" data-action="set-payroll-group-page-size" data-value="${item}" type="button">${item} / 页</button>
+              `
+            ).join("")}
+          `
+        )}
+      </div>
+    </div>
+  `;
+}
+
+function renderPayrollGroupSettingsRows(rows) {
+  return rows.length
+    ? rows
+        .map(
+          (row) => {
+            const menuId = getPayrollGroupSettingsRowMenuId(row.id);
+            const isMenuOpen = state.openRowMenu === menuId;
+            return `
+            <div class="payroll-group-table-row">
+              <div class="payroll-group-table-cell payroll-group-table-name">
+                <span class="truncate" title="${escapeHtml(row.name)}">${escapeHtml(row.name)}</span>
+              </div>
+              <div class="payroll-group-table-cell payroll-group-table-creator">
+                <span class="truncate" title="${escapeHtml(row.creator)}">${escapeHtml(row.creator)}</span>
+              </div>
+              <div class="payroll-group-table-cell payroll-group-table-actions">
+                <button class="payroll-group-config-link" data-action="configure-payroll-group" data-value="${escapeHtml(row.id)}" type="button">配置</button>
+                <button
+                  class="more-button row-menu-trigger"
+                  data-action="toggle-row-menu"
+                  data-value="${escapeHtml(menuId)}"
+                  type="button"
+                  aria-label="更多操作"
+                  aria-haspopup="menu"
+                  aria-expanded="${isMenuOpen ? "true" : "false"}"
+                >
+                  <span class="more-dot"></span>
+                  <span class="more-dot"></span>
+                  <span class="more-dot"></span>
+                </button>
+                ${renderPayrollGroupSettingsRowMenu(row)}
+              </div>
+            </div>
+          `;
+          }
+        )
+        .join("")
+    : `
+      <div class="table-empty payroll-group-empty">
+        <div class="empty-title">未找到薪酬组</div>
+      </div>
+    `;
+}
+
+function renderPayrollGroupSettingsCreatorOptions(creatorOptions, selectedCreator) {
+  return creatorOptions
+    .map(
+      (option) => `
+        <button class="dropdown-option ${selectedCreator === option.key ? "is-active" : ""}" data-action="set-payroll-group-creator-filter" data-value="${escapeHtml(option.key)}" type="button">${escapeHtml(option.label)}</button>
+      `
+    )
+    .join("");
+}
+
+function renderPayrollGroupSettingsRowMenu(row) {
+  const menuId = getPayrollGroupSettingsRowMenuId(row.id);
+  return renderTransientPanel(
+    "row-menu",
+    menuId,
+    state.openRowMenu === menuId,
+    `
+      <button class="dropdown-option" data-action="copy-payroll-group" data-value="${escapeHtml(row.id)}" type="button">复制薪酬组</button>
+      <button class="dropdown-option danger" data-action="delete-payroll-group" data-value="${escapeHtml(row.id)}" type="button">删除薪酬组</button>
+    `,
+    "row-menu"
+  );
+}
+
+function renderPayrollGroupDetailTabs(activeTab) {
+  return PAYROLL_GROUP_DETAIL_TAB_OPTIONS.map(
+    (item) => `
+      <button
+        class="tab ${activeTab === item.key ? "is-active" : ""}"
+        data-action="set-payroll-group-detail-tab"
+        data-value="${escapeHtml(item.key)}"
+        data-tab-value="${escapeHtml(item.key)}"
+        type="button"
+      >
+        ${escapeHtml(item.label)}
+      </button>
+    `
+  ).join("");
+}
+
+function renderPayrollGroupDetailSections(visibleSections, activeSectionKey) {
+  if (!visibleSections.length) {
+    return `<div class="payroll-group-detail-section-empty">未找到匹配项</div>`;
+  }
+
+  return visibleSections
+    .map(
+      (item) => `
+        <div class="goal-config-tree-row-wrap">
+          <div class="goal-config-tree-row payroll-group-detail-tree-row ${activeSectionKey === item.key ? "is-selected" : ""}">
+            <span class="goal-config-tree-icon">${renderPayrollGroupDetailSectionIcon()}</span>
+            <button
+              class="goal-config-tree-main payroll-group-detail-tree-main"
+              data-action="set-payroll-group-detail-section"
+              data-value="${escapeHtml(item.key)}"
+              type="button"
+            >
+              <span class="goal-config-tree-label">${escapeHtml(item.label)}</span>
+            </button>
+            <div class="goal-config-tree-end payroll-group-detail-tree-end">
+              <span class="goal-config-tree-count">${item.count}</span>
+            </div>
+          </div>
+        </div>
+      `
+    )
+    .join("");
+}
+
+function renderPayrollGroupDetailSectionIcon() {
+  return renderGoalConfigSvgIcon(
+    "goal-config-tree-icon-svg is-leaf",
+    "0 0 14.0007 13.334",
+    '<g><path d="M0 12V1.33398C0 0.597605 0.597605 0 1.33398 0H5.33399L5.40723 0.00488281C5.5774 0.0237815 5.73488 0.107258 5.8457 0.240234L7.3125 2H12.667C13.4034 2 14 2.59759 14 3.33398V12C14 12.7364 13.4034 13.334 12.667 13.334H1.33398C0.597611 13.334 0 12.7364 0 12ZM1.33398 12H12.667V3.33398H7C6.80228 3.33389 6.61487 3.24564 6.48828 3.09375L5.02148 1.33398H1.33398V12Z" fill="currentColor"/><path d="M13.334 5.33333V6.66732H0.666992V5.33333H13.334Z" fill="currentColor"/><path d="M0 8.00033V4.00033C0 3.63214 0.298802 3.33333 0.666992 3.33333C1.03518 3.33333 1.33398 3.63214 1.33398 4.00033V8.00033C1.33398 8.36852 1.03518 8.66732 0.666992 8.66732C0.298802 8.66732 0 8.36852 0 8.00033Z" fill="currentColor"/><path d="M12.6667 8.00033V4.00033C12.6667 3.63214 12.9655 3.33333 13.3337 3.33333C13.7018 3.33333 14.0007 3.63214 14.0007 4.00033V8.00033C14.0007 8.36852 13.7018 8.66732 13.3337 8.66732C12.9655 8.66732 12.6667 8.36852 12.6667 8.00033Z" fill="currentColor"/></g>'
+  );
+}
+
+function renderPayrollGroupDetailSectionPanel(detail, visibleSections) {
+  if (detail.sidebarCollapsed) {
+    return `
+      <aside class="goal-config-tree-panel payroll-group-detail-tree-panel is-collapsed" data-payroll-group-detail-sidebar>
+        <button class="goal-config-tree-collapse-handle is-collapsed" data-action="toggle-payroll-group-detail-sidebar" type="button" aria-label="展开项分类" title="展开项分类">
+          ${renderGoalConfigCollapseHandleIcon(true)}
+        </button>
+      </aside>
+    `;
+  }
+
+  return `
+    <aside class="goal-config-tree-panel payroll-group-detail-tree-panel" data-payroll-group-detail-sidebar>
+      <div class="goal-config-tree-search">
+        <label class="search-box goal-config-search-box payroll-group-detail-item-search">
+          <img src="./assets/search.svg" alt="" />
+          <input
+            data-field="payroll-group-detail-item-keyword"
+            data-payroll-group-detail-item-keyword-input
+            type="text"
+            value="${escapeHtml(detail.itemKeyword)}"
+            placeholder="搜索项分组"
+          />
+        </label>
+        <button class="goal-config-tree-collapse-handle" data-action="toggle-payroll-group-detail-sidebar" type="button" aria-label="收起项分类" title="收起项分类">
+          ${renderGoalConfigCollapseHandleIcon(false)}
+        </button>
+      </div>
+      <div class="goal-config-tree-list payroll-group-detail-section-list" data-payroll-group-detail-section-list>
+        ${renderPayrollGroupDetailSections(visibleSections, detail.sectionKey)}
+      </div>
+    </aside>
+  `;
+}
+
+function renderPayrollGroupDetailStatusOptions(selectedStatus) {
+  return PAYROLL_GROUP_DETAIL_STATUS_OPTIONS.map(
+    (option) => `
+      <button class="dropdown-option ${selectedStatus === option.key ? "is-active" : ""}" data-action="set-payroll-group-detail-status-filter" data-value="${escapeHtml(option.key)}" type="button">${escapeHtml(option.label)}</button>
+    `
+  ).join("");
+}
+
+function renderPayrollGroupDetailCreatorOptionsList(creatorOptions, selectedCreator) {
+  return creatorOptions
+    .map(
+      (option) => `
+        <button class="dropdown-option ${selectedCreator === option.key ? "is-active" : ""}" data-action="set-payroll-group-detail-creator-filter" data-value="${escapeHtml(option.key)}" type="button">${escapeHtml(option.label)}</button>
+      `
+    )
+    .join("");
+}
+
+function renderPayrollGroupDetailStatusTag(field) {
+  const isEnabled = field.status === "enabled";
+  return `
+    <span class="payroll-group-detail-status-tag ${isEnabled ? "is-enabled" : "is-disabled"}">
+      ${isEnabled ? "已启用" : "已停用"}
+    </span>
+  `;
+}
+
+function renderPayrollGroupDetailFieldMenu(field) {
+  const menuId = getPayrollGroupDetailFieldMenuId(field.id);
+  const isSystemDefault = !!field.isSystemDefault;
+  const nextStatusAction = field.status === "enabled" ? "停用项" : "启用项";
+  return renderTransientPanel(
+    "row-menu",
+    menuId,
+    state.openRowMenu === menuId,
+    `
+      <button class="dropdown-option" data-action="edit-payroll-group-detail-field" data-value="${escapeHtml(field.id)}" type="button">编辑项</button>
+      ${isSystemDefault ? "" : `<button class="dropdown-option" data-action="toggle-payroll-group-detail-field-status" data-value="${escapeHtml(field.id)}" type="button">${nextStatusAction}</button>
+      <button class="dropdown-option danger" data-action="delete-payroll-group-detail-field" data-value="${escapeHtml(field.id)}" type="button">删除项</button>`}
+    `,
+    "row-menu"
+  );
+}
+
+function renderPayrollGroupDetailLockIcon() {
+  return `
+    <span class="payroll-group-detail-lock-slot" aria-hidden="true">
+      <img class="payroll-group-detail-lock-icon" src="${PAYROLL_GROUP_LOCK_ICON_ASSET}" alt="" />
+    </span>
+  `;
+}
+
+function renderPayrollGroupDetailRows(rows) {
+  return rows.length
+    ? rows
+        .map((field) => {
+          const menuId = getPayrollGroupDetailFieldMenuId(field.id);
+          const isMenuOpen = state.openRowMenu === menuId;
+          const isSystemDefault = !!field.isSystemDefault;
+          return `
+            <div class="payroll-group-detail-table-row ${isSystemDefault ? "is-system-default" : ""}">
+              <div class="payroll-group-detail-table-cell payroll-group-detail-table-name">
+                <div class="payroll-group-detail-table-name-content">
+                  <span class="truncate payroll-group-detail-table-name-text" title="${escapeHtml(field.name)}">${escapeHtml(field.name)}</span>
+                  ${isSystemDefault ? renderPayrollGroupDetailLockIcon() : ""}
+                </div>
+              </div>
+              <div class="payroll-group-detail-table-cell payroll-group-detail-table-status">
+                ${renderPayrollGroupDetailStatusTag(field)}
+              </div>
+              <div class="payroll-group-detail-table-cell payroll-group-detail-table-creator">
+                <span class="truncate" title="${escapeHtml(field.creator)}">${escapeHtml(field.creator)}</span>
+              </div>
+              <div class="payroll-group-detail-table-cell payroll-group-detail-table-actions">
+                <button class="link-action payroll-group-detail-edit-link" data-action="edit-payroll-group-detail-field" data-value="${escapeHtml(field.id)}" type="button">编辑</button>
+                <button
+                  class="more-button row-menu-trigger"
+                  data-action="toggle-row-menu"
+                  data-value="${escapeHtml(menuId)}"
+                  type="button"
+                  aria-label="更多操作"
+                  aria-haspopup="menu"
+                  aria-expanded="${isMenuOpen ? "true" : "false"}"
+                >
+                  <span class="more-dot"></span>
+                  <span class="more-dot"></span>
+                  <span class="more-dot"></span>
+                </button>
+                ${renderPayrollGroupDetailFieldMenu(field)}
+              </div>
+            </div>
+          `;
+        })
+        .join("")
+    : `
+      <div class="table-empty payroll-group-empty">
+        <div class="empty-title">未找到项</div>
+      </div>
+    `;
+}
+
+function renderPayrollGroupDetailPagination(rows, totalPages, currentPage) {
+  return `
+    <div class="pagination">
+      <div class="pagination-total">共 ${rows.length} 条</div>
+      <div class="pagination-controls">
+        <button class="page-button" data-action="payroll-group-detail-page-prev" type="button" ${currentPage <= 1 ? "disabled" : ""}>
+          <img class="payroll-group-pagination-arrow" src="./assets/page-prev.svg" alt="" />
+        </button>
+        <div class="page-current">${currentPage}</div>
+        <button class="page-button" data-action="payroll-group-detail-page-next" type="button" ${currentPage >= totalPages ? "disabled" : ""}>
+          <img class="payroll-group-pagination-arrow" src="./assets/page-next.svg" alt="" />
+        </button>
+      </div>
+      <div class="page-size">
+        <button class="page-size-button payroll-group-page-size-button ${isDropdownOpen("payroll-group-detail-page-size") ? "is-open" : ""}" data-action="toggle-dropdown" data-value="payroll-group-detail-page-size" type="button" aria-expanded="${isDropdownOpen("payroll-group-detail-page-size") ? "true" : "false"}">
+          <span>${state.pageSize} / 页</span>
+          <img class="payroll-group-page-size-chevron" src="./assets/chevron-down.svg" alt="" />
+        </button>
+        ${renderDropdownPanel(
+          "payroll-group-detail-page-size",
+          `
+            ${PAGE_SIZE_OPTIONS.map(
+              (item) => `
+                <button class="dropdown-option ${state.pageSize === item ? "is-active" : ""}" data-action="set-payroll-group-detail-page-size" data-value="${item}" type="button">${item} / 页</button>
+              `
+            ).join("")}
+          `
+        )}
+      </div>
+    </div>
+  `;
+}
+
+function renderPayrollGroupDetailSalaryItems(row) {
+  const detail = getPayrollGroupDetailState();
+  const visibleSections = getVisiblePayrollGroupDetailSections();
+  const filteredFields = getFilteredPayrollGroupDetailFields();
+  const { items: pageFields, totalPages, page } = getPayrollGroupDetailPagedFields(filteredFields);
+  const creatorOptions = getPayrollGroupDetailCreatorOptions();
+  const currentCreatorLabel =
+    creatorOptions.find((option) => option.key === detail.creator)?.label || "全部成员";
+  const currentStatusLabel = getPayrollGroupDetailStatusLabel(detail.status);
+  const createLabel = formatPayrollGroupDetailCreateLabel(detail.sectionKey);
+
+  return `
+    <div class="payroll-group-detail-body goal-config-body">
+      <div class="payroll-group-detail-side">
+        ${renderPayrollGroupDetailSectionPanel(detail, visibleSections)}
+      </div>
+
+      <div class="payroll-group-detail-main goal-config-main">
+        <div class="payroll-group-detail-toolbar">
+          <div class="payroll-group-detail-toolbar-left">
+            <label class="search-box payroll-group-detail-field-search">
+              <img src="./assets/search.svg" alt="" />
+            <input
+              data-field="payroll-group-detail-field-keyword"
+              data-payroll-group-detail-field-keyword-input
+              type="text"
+              value="${escapeHtml(detail.fieldKeyword)}"
+              placeholder="搜索项名称"
+            />
+          </label>
+
+            <div class="control control-period control-auto payroll-group-detail-status-control">
+              <button
+                class="${dropdownTriggerClass("control-button", "payroll-group-detail-status")}"
+                data-action="toggle-dropdown"
+                data-value="payroll-group-detail-status"
+                type="button"
+                aria-expanded="${isDropdownOpen("payroll-group-detail-status") ? "true" : "false"}"
+              >
+                <span class="truncate">${escapeHtml(currentStatusLabel)}</span>
+                ${renderControlArrow()}
+              </button>
+              ${renderDropdownPanel(
+                "payroll-group-detail-status",
+                renderPayrollGroupDetailStatusOptions(detail.status),
+                "dropdown-panel payroll-group-detail-status-menu"
+              )}
+            </div>
+
+            <div class="control control-period control-auto payroll-group-detail-creator-control">
+              <button
+                class="${dropdownTriggerClass("control-button", "payroll-group-detail-creator")}"
+                data-action="toggle-dropdown"
+                data-value="payroll-group-detail-creator"
+                type="button"
+                aria-expanded="${isDropdownOpen("payroll-group-detail-creator") ? "true" : "false"}"
+              >
+                <span class="truncate">${escapeHtml(currentCreatorLabel)}</span>
+                ${renderControlArrow()}
+              </button>
+              ${renderDropdownPanel(
+                "payroll-group-detail-creator",
+                renderPayrollGroupDetailCreatorOptionsList(creatorOptions, detail.creator),
+                "dropdown-panel payroll-group-detail-creator-menu"
+              )}
+            </div>
+          </div>
+
+          <div class="payroll-group-detail-toolbar-right">
+            <button class="payroll-group-create-button" data-action="create-payroll-group-detail-field" data-value="${escapeHtml(detail.sectionKey)}" data-payroll-group-detail-create-button type="button">
+              ${escapeHtml(createLabel)}
+            </button>
+          </div>
+        </div>
+
+        <div class="table-region payroll-group-detail-table-region">
+          <div class="table-shell payroll-group-detail-table-shell">
+            <div class="payroll-group-detail-table-header">
+              <div class="payroll-group-detail-table-cell payroll-group-detail-table-name payroll-group-detail-table-head-cell">项名称</div>
+              <div class="payroll-group-detail-table-cell payroll-group-detail-table-status payroll-group-detail-table-head-cell">状态</div>
+              <div class="payroll-group-detail-table-cell payroll-group-detail-table-creator payroll-group-detail-table-head-cell">创建人</div>
+              <div class="payroll-group-detail-table-cell payroll-group-detail-table-actions payroll-group-detail-table-head-cell">操作</div>
+            </div>
+
+            <div class="payroll-group-detail-table-body" data-payroll-group-detail-table-body>
+              ${renderPayrollGroupDetailRows(pageFields)}
+            </div>
+
+            <div class="payroll-group-footer payroll-group-detail-footer" data-payroll-group-detail-footer>
+              ${renderPayrollGroupDetailPagination(filteredFields, totalPages, page)}
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  `;
+}
+
+function renderPayrollGroupRuleField(label, fieldName, value, { required = false, monthIndex = null } = {}) {
+  const monthAttribute =
+    monthIndex === null ? "" : ` data-month-index="${escapeHtml(String(monthIndex))}"`;
+  return `
+    <div class="payroll-group-rule-field">
+      <label class="payroll-group-rule-field-label">
+        ${required ? renderPayrollGroupRequiredIcon("payroll-group-rule-field-required") : ""}
+        <span class="payroll-group-rule-field-label-text">${escapeHtml(label)}</span>
+      </label>
+      <span class="payroll-group-field-create-control-shell payroll-group-rule-input-shell">
+        <input
+          class="payroll-group-field-create-input payroll-group-rule-input"
+          data-field="${escapeHtml(fieldName)}"${monthAttribute}
+          type="text"
+          inputmode="decimal"
+          value="${escapeHtml(value || "")}"
+          placeholder="请输入"
+        />
+      </span>
+    </div>
+  `;
+}
+
+function renderPayrollGroupRuleViewSwitch(viewMode) {
+  return `
+    <div class="segmented payroll-group-rule-switch-control" role="tablist" aria-label="时薪计算方式">
+      ${PAYROLL_GROUP_RULE_VIEW_OPTIONS.map(
+        (option) => `
+          <button
+            class="segment ${viewMode === option.key ? "is-active" : ""}"
+            data-action="set-payroll-group-rule-view-mode"
+            data-value="${escapeHtml(option.key)}"
+            type="button"
+            role="tab"
+            aria-selected="${viewMode === option.key ? "true" : "false"}"
+          >
+            ${escapeHtml(option.label)}
+          </button>
+        `
+      ).join("")}
+    </div>
+  `;
+}
+
+function renderPayrollGroupDetailRules() {
+  const ruleSettings = getPayrollGroupRuleSettings();
+  const modeFields =
+    ruleSettings.viewMode === "monthly"
+      ? PAYROLL_GROUP_RULE_MONTH_OPTIONS.map((item, index) =>
+          renderPayrollGroupRuleField(item.label, "payroll-group-rule-month-day", ruleSettings.monthlyDays[index], {
+            required: true,
+            monthIndex: index,
+          })
+        ).join("")
+      : renderPayrollGroupRuleField("固定天数（天）", "payroll-group-rule-fixed-days", ruleSettings.fixedDays, {
+          required: true,
+        });
+
+  return `
+    <div class="payroll-group-rule-page">
+      <div class="payroll-group-rule-shell">
+        <div class="payroll-group-rule-header">
+          <h3 class="payroll-group-rule-title">时薪计算信息</h3>
+        </div>
+
+        <div class="payroll-group-rule-switch-row">
+          ${renderPayrollGroupRuleViewSwitch(ruleSettings.viewMode)}
+        </div>
+
+        <div class="payroll-group-rule-content">
+          <div class="payroll-group-rule-form-region">
+            <div class="payroll-group-rule-form-card">
+              ${modeFields}
+              ${renderPayrollGroupRuleField(
+                "每日出勤（时）",
+                "payroll-group-rule-daily-attendance-hours",
+                ruleSettings.dailyAttendanceHours
+              )}
+            </div>
+          </div>
+
+          <div class="payroll-group-rule-footer">
+            <button class="primary-action is-enabled payroll-group-rule-save-button" data-action="save-payroll-group-rule-settings" type="button">
+              保存
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  `;
+}
+
+function renderPayrollGroupDetailPlaceholder(row) {
+  const detail = getPayrollGroupDetailState();
+  const tabLabel = getPayrollGroupDetailTabLabel(detail.activeTab);
+  return `
+    <div class="payroll-group-detail-placeholder">
+      <div class="completed-card">
+        <h3>${escapeHtml(tabLabel)} 待接入</h3>
+        <p>「${escapeHtml(row.name)}」的 ${escapeHtml(tabLabel)} 页签已经预留在当前详情页结构里，这次先完成了“薪酬项”和“规则设置”页。</p>
+      </div>
+    </div>
+  `;
+}
+
+function renderPayrollGroupDetailContent(row, activeTab = getPayrollGroupDetailState().activeTab) {
+  if (activeTab === "salary-items") {
+    return renderPayrollGroupDetailSalaryItems(row);
+  }
+  if (activeTab === "rules") {
+    return renderPayrollGroupDetailRules();
+  }
+  return renderPayrollGroupDetailPlaceholder(row);
+}
+
+function syncDropdownPanelInPlace(controlRoot, dropdownKey, panelClass, contentHtml) {
+  if (!(controlRoot instanceof HTMLElement)) {
+    return;
+  }
+
+  const button = controlRoot.querySelector(`[data-action="toggle-dropdown"][data-value="${dropdownKey}"]`);
+  if (!(button instanceof HTMLElement)) {
+    return;
+  }
+
+  const motionState = getDropdownMotionState(dropdownKey);
+  const existingPanel = controlRoot.querySelector(`[data-dropdown-key="${dropdownKey}"]`);
+
+  button.classList.toggle("is-open", isDropdownOpen(dropdownKey));
+  button.setAttribute("aria-expanded", isDropdownOpen(dropdownKey) ? "true" : "false");
+
+  if (motionState === "closed") {
+    existingPanel?.remove();
+    return;
+  }
+
+  if (existingPanel instanceof HTMLElement) {
+    existingPanel.className = panelClass;
+    existingPanel.setAttribute("data-dropdown-key", dropdownKey);
+    existingPanel.setAttribute("data-dropdown-state", motionState);
+    if (existingPanel.innerHTML !== contentHtml) {
+      existingPanel.innerHTML = contentHtml;
+    }
+    return;
+  }
+
+  button.insertAdjacentHTML(
+    "afterend",
+    renderDropdownPanel(dropdownKey, contentHtml, panelClass) || ""
+  );
+}
+
+function syncPayrollGroupSettingsPage() {
+  const pageRoot = document.querySelector(".payroll-group-page");
+  if (!(pageRoot instanceof HTMLElement)) {
+    return false;
+  }
+
+  const filteredRows = getFilteredPayrollGroupSettingsRows();
+  const { items: pageRows, totalPages, page } = getPayrollGroupSettingsPagedRows(filteredRows);
+  const creatorOptions = getPayrollGroupCreatorOptions();
+  const currentCreatorLabel =
+    creatorOptions.find((option) => option.key === state.payrollGroupSettings.creator)?.label || "全部成员";
+
+  const searchInput = pageRoot.querySelector('input[data-field="payroll-group-keyword"]');
+  if (searchInput instanceof HTMLInputElement && searchInput.value !== state.payrollGroupSettings.keyword) {
+    searchInput.value = state.payrollGroupSettings.keyword;
+  }
+
+  const creatorControl = pageRoot.querySelector(".payroll-group-creator-control");
+  if (creatorControl instanceof HTMLElement) {
+    const creatorButton = creatorControl.querySelector('[data-action="toggle-dropdown"][data-value="payroll-group-creator"]');
+    if (creatorButton instanceof HTMLElement) {
+      creatorButton.classList.toggle("is-open", isDropdownOpen("payroll-group-creator"));
+      creatorButton.setAttribute("aria-expanded", isDropdownOpen("payroll-group-creator") ? "true" : "false");
+      const label = creatorButton.querySelector(".truncate");
+      if (label instanceof HTMLElement && label.textContent !== currentCreatorLabel) {
+        label.textContent = currentCreatorLabel;
+      }
+    }
+
+    syncDropdownPanelInPlace(
+      creatorControl,
+      "payroll-group-creator",
+      "dropdown-panel payroll-group-creator-menu",
+      renderPayrollGroupSettingsCreatorOptions(creatorOptions, state.payrollGroupSettings.creator)
+    );
+  }
+
+  const tableBody = pageRoot.querySelector(".payroll-group-table-body");
+  if (tableBody instanceof HTMLElement) {
+    const nextRowsHtml = renderPayrollGroupSettingsRows(pageRows);
+    if (tableBody.innerHTML !== nextRowsHtml) {
+      const previousScrollTop = tableBody.scrollTop;
+      tableBody.innerHTML = nextRowsHtml;
+      tableBody.scrollTop = previousScrollTop;
+    }
+  }
+
+  const footer = pageRoot.querySelector(".payroll-group-footer");
+  if (footer instanceof HTMLElement) {
+    const nextFooterHtml = renderPayrollGroupSettingsPagination(filteredRows, totalPages, page);
+    if (footer.innerHTML !== nextFooterHtml) {
+      footer.innerHTML = nextFooterHtml;
+    }
+  }
+
+  flushDropdownChevronAnimations();
+  scheduleDropdownMotionStateCleanup();
+  syncAdaptiveTableActionColumns();
+  syncPayrollGroupSwitchControl();
+  return true;
+}
+
+function syncPayrollGroupSwitchControl() {
+  const switchControl = document.querySelector(".topbar-user-switch");
+  if (!(switchControl instanceof HTMLElement)) {
+    return false;
+  }
+
+  const nextHtml = renderPayrollGroupSwitchControl();
+  if (switchControl.innerHTML !== nextHtml) {
+    switchControl.innerHTML = nextHtml;
+  }
+  return true;
+}
+
+function syncPayrollGroupDetailTabs(pageRoot, activeTab) {
+  const contentCard = pageRoot.closest(".content-card");
+  const tabsRoot = contentCard?.querySelector(".payroll-group-detail-tabs");
+  if (!(tabsRoot instanceof HTMLElement)) {
+    return;
+  }
+
+  tabsRoot.querySelectorAll(".tab").forEach((tabButton) => {
+    if (!(tabButton instanceof HTMLElement)) {
+      return;
+    }
+    tabButton.classList.toggle("is-active", tabButton.dataset.tabValue === activeTab);
+  });
+
+  syncTabIndicators();
+}
+
+function syncPayrollGroupDetailPage() {
+  const detail = getPayrollGroupDetailState();
+  const row = getPayrollGroupDetailRow();
+  const pageRoot = document.querySelector(".payroll-group-detail-page");
+  if (!(pageRoot instanceof HTMLElement) || !row) {
+    return false;
+  }
+
+  const breadcrumbName = document.querySelector("[data-payroll-group-detail-name]");
+  if (breadcrumbName instanceof HTMLElement && breadcrumbName.textContent !== row.name) {
+    breadcrumbName.textContent = row.name;
+  }
+
+  syncPayrollGroupDetailTabs(pageRoot, detail.activeTab);
+
+  if (detail.activeTab === "rules") {
+    const currentFormRegion = pageRoot.querySelector(".payroll-group-rule-form-region");
+    const previousScrollTop = currentFormRegion instanceof HTMLElement ? currentFormRegion.scrollTop : 0;
+    const nextContentHtml = renderPayrollGroupDetailContent(row, detail.activeTab);
+    if (pageRoot.innerHTML !== nextContentHtml) {
+      pageRoot.innerHTML = nextContentHtml;
+      const nextFormRegion = pageRoot.querySelector(".payroll-group-rule-form-region");
+      if (nextFormRegion instanceof HTMLElement) {
+        nextFormRegion.scrollTop = previousScrollTop;
+      }
+    }
+    flushDropdownChevronAnimations();
+    scheduleDropdownMotionStateCleanup();
+    syncAdaptiveTableActionColumns();
+    syncPayrollGroupSwitchControl();
+    return true;
+  }
+
+  if (detail.activeTab !== "salary-items") {
+    const nextContentHtml = renderPayrollGroupDetailContent(row, detail.activeTab);
+    if (pageRoot.innerHTML !== nextContentHtml) {
+      pageRoot.innerHTML = nextContentHtml;
+    }
+    flushDropdownChevronAnimations();
+    scheduleDropdownMotionStateCleanup();
+    syncAdaptiveTableActionColumns();
+    syncPayrollGroupSwitchControl();
+    return true;
+  }
+
+  if (!(pageRoot.querySelector(".payroll-group-detail-body") instanceof HTMLElement)) {
+    pageRoot.innerHTML = renderPayrollGroupDetailContent(row, detail.activeTab);
+  }
+
+  const visibleSections = getVisiblePayrollGroupDetailSections();
+  const filteredFields = getFilteredPayrollGroupDetailFields();
+  const { items: pageFields, totalPages, page } = getPayrollGroupDetailPagedFields(filteredFields);
+  const creatorOptions = getPayrollGroupDetailCreatorOptions();
+  const currentCreatorLabel =
+    creatorOptions.find((option) => option.key === detail.creator)?.label || "全部成员";
+  const currentStatusLabel = getPayrollGroupDetailStatusLabel(detail.status);
+  const createLabel = formatPayrollGroupDetailCreateLabel(detail.sectionKey);
+
+  const sidebarPanel = pageRoot.querySelector("[data-payroll-group-detail-sidebar]");
+  if (sidebarPanel instanceof HTMLElement) {
+    const isCollapsed = sidebarPanel.classList.contains("is-collapsed");
+    if (isCollapsed !== !!detail.sidebarCollapsed) {
+      const nextSidebarHtml = renderPayrollGroupDetailSectionPanel(detail, visibleSections);
+      if (sidebarPanel.outerHTML !== nextSidebarHtml) {
+        sidebarPanel.outerHTML = nextSidebarHtml;
+      }
+    }
+  }
+
+  const itemSearchInput = pageRoot.querySelector('input[data-field="payroll-group-detail-item-keyword"]');
+  if (itemSearchInput instanceof HTMLInputElement && itemSearchInput.value !== detail.itemKeyword) {
+    itemSearchInput.value = detail.itemKeyword;
+  }
+
+  const fieldSearchInput = pageRoot.querySelector('input[data-field="payroll-group-detail-field-keyword"]');
+  if (fieldSearchInput instanceof HTMLInputElement && fieldSearchInput.value !== detail.fieldKeyword) {
+    fieldSearchInput.value = detail.fieldKeyword;
+  }
+
+  const sectionList = pageRoot.querySelector("[data-payroll-group-detail-section-list]");
+  if (sectionList instanceof HTMLElement) {
+    const nextSectionsHtml = renderPayrollGroupDetailSections(visibleSections, detail.sectionKey);
+    if (sectionList.innerHTML !== nextSectionsHtml) {
+      const previousScrollTop = sectionList.scrollTop;
+      sectionList.innerHTML = nextSectionsHtml;
+      sectionList.scrollTop = previousScrollTop;
+    }
+  }
+
+  const statusControl = pageRoot.querySelector(".payroll-group-detail-status-control");
+  if (statusControl instanceof HTMLElement) {
+    const statusButton = statusControl.querySelector('[data-action="toggle-dropdown"][data-value="payroll-group-detail-status"]');
+    if (statusButton instanceof HTMLElement) {
+      statusButton.classList.toggle("is-open", isDropdownOpen("payroll-group-detail-status"));
+      statusButton.setAttribute("aria-expanded", isDropdownOpen("payroll-group-detail-status") ? "true" : "false");
+      const label = statusButton.querySelector(".truncate");
+      if (label instanceof HTMLElement && label.textContent !== currentStatusLabel) {
+        label.textContent = currentStatusLabel;
+      }
+    }
+
+    syncDropdownPanelInPlace(
+      statusControl,
+      "payroll-group-detail-status",
+      "dropdown-panel payroll-group-detail-status-menu",
+      renderPayrollGroupDetailStatusOptions(detail.status)
+    );
+  }
+
+  const creatorControl = pageRoot.querySelector(".payroll-group-detail-creator-control");
+  if (creatorControl instanceof HTMLElement) {
+    const creatorButton = creatorControl.querySelector('[data-action="toggle-dropdown"][data-value="payroll-group-detail-creator"]');
+    if (creatorButton instanceof HTMLElement) {
+      creatorButton.classList.toggle("is-open", isDropdownOpen("payroll-group-detail-creator"));
+      creatorButton.setAttribute("aria-expanded", isDropdownOpen("payroll-group-detail-creator") ? "true" : "false");
+      const label = creatorButton.querySelector(".truncate");
+      if (label instanceof HTMLElement && label.textContent !== currentCreatorLabel) {
+        label.textContent = currentCreatorLabel;
+      }
+    }
+
+    syncDropdownPanelInPlace(
+      creatorControl,
+      "payroll-group-detail-creator",
+      "dropdown-panel payroll-group-detail-creator-menu",
+      renderPayrollGroupDetailCreatorOptionsList(creatorOptions, detail.creator)
+    );
+  }
+
+  const createButton = pageRoot.querySelector("[data-payroll-group-detail-create-button]");
+  if (createButton instanceof HTMLElement && createButton.textContent?.trim() !== createLabel) {
+    createButton.textContent = createLabel;
+  }
+
+  const tableBody = pageRoot.querySelector("[data-payroll-group-detail-table-body]");
+  if (tableBody instanceof HTMLElement) {
+    const nextRowsHtml = renderPayrollGroupDetailRows(pageFields);
+    if (tableBody.innerHTML !== nextRowsHtml) {
+      const previousScrollTop = tableBody.scrollTop;
+      tableBody.innerHTML = nextRowsHtml;
+      tableBody.scrollTop = previousScrollTop;
+    }
+  }
+
+  const footer = pageRoot.querySelector("[data-payroll-group-detail-footer]");
+  if (footer instanceof HTMLElement) {
+    const nextFooterHtml = renderPayrollGroupDetailPagination(filteredFields, totalPages, page);
+    if (footer.innerHTML !== nextFooterHtml) {
+      footer.innerHTML = nextFooterHtml;
+    }
+  }
+
+  flushDropdownChevronAnimations();
+  scheduleDropdownMotionStateCleanup();
+  syncAdaptiveTableActionColumns();
+  syncPayrollGroupSwitchControl();
+  return true;
+}
+
+function syncPayrollGroupPage() {
+  if (isPayrollGroupDetailOpen()) {
+    return syncPayrollGroupDetailPage();
+  }
+  return syncPayrollGroupSettingsPage();
+}
+
+function renderPayrollGroupSettingsListPage() {
+  const filteredRows = getFilteredPayrollGroupSettingsRows();
+  const { items: pageRows, totalPages, page } = getPayrollGroupSettingsPagedRows(filteredRows);
+  const creatorOptions = getPayrollGroupCreatorOptions();
+  const currentCreatorLabel =
+    creatorOptions.find((option) => option.key === state.payrollGroupSettings.creator)?.label || "全部成员";
+
+  return `
+    <main class="page">
+      <div class="page-inner">
+        <div class="breadcrumb-row">
+          <div class="breadcrumb">
+            <span class="breadcrumb-segment">
+              <span class="breadcrumb-item">设置模块</span>
+            </span>
+            ${renderBreadcrumbSeparator()}
+            <span class="breadcrumb-segment">
+              <span class="breadcrumb-item is-active">薪酬组设置</span>
+            </span>
+          </div>
+        </div>
+
+        <section class="content-card">
+          <div class="tab-row">
+            <div class="tabs payroll-group-tabs" data-tab-group="payroll-group-settings">
+              <button class="tab is-active" data-tab-value="payroll-group-settings" type="button">薪酬组设置</button>
+              <span class="tab-indicator" aria-hidden="true"></span>
+            </div>
+          </div>
+
+          <div class="payroll-group-page" data-payroll-group-page>
+            <div class="payroll-group-toolbar" data-payroll-group-toolbar>
+              <div class="payroll-group-toolbar-left" data-payroll-group-toolbar-left>
+                <label class="search-box" data-payroll-group-search-box>
+                  <img src="./assets/search.svg" alt="" />
+                  <input data-field="payroll-group-keyword" data-payroll-group-keyword-input type="text" value="${escapeHtml(
+                    state.payrollGroupSettings.keyword
+                  )}" placeholder="搜索薪酬组" />
+                </label>
+
+                <div class="control control-period control-auto payroll-group-creator-control" data-payroll-group-creator-control>
+                  <button
+                    class="${dropdownTriggerClass("control-button", "payroll-group-creator")}"
+                    data-action="toggle-dropdown"
+                    data-value="payroll-group-creator"
+                    data-payroll-group-creator-trigger
+                    type="button"
+                    aria-expanded="${isDropdownOpen("payroll-group-creator") ? "true" : "false"}"
+                  >
+                    <span class="truncate" data-payroll-group-creator-label>${escapeHtml(currentCreatorLabel)}</span>
+                    ${renderControlArrow()}
+                  </button>
+                  ${renderDropdownPanel(
+                    "payroll-group-creator",
+                    `
+                      ${renderPayrollGroupSettingsCreatorOptions(creatorOptions, state.payrollGroupSettings.creator)}
+                    `,
+                    "dropdown-panel payroll-group-creator-menu"
+                  )}
+                </div>
+              </div>
+              <div class="payroll-group-toolbar-right" data-payroll-group-toolbar-right>
+                <button class="payroll-group-create-button" data-action="create-payroll-group" type="button">创建薪酬组</button>
+              </div>
+            </div>
+
+            <div class="table-region payroll-group-table-region" data-payroll-group-table-region>
+              <div class="table-shell payroll-group-table-shell">
+                <div class="payroll-group-table-header">
+                  <div class="payroll-group-table-cell payroll-group-table-name payroll-group-table-head-cell">薪酬组名称</div>
+                  <div class="payroll-group-table-cell payroll-group-table-creator payroll-group-table-head-cell">创建人</div>
+                  <div class="payroll-group-table-cell payroll-group-table-actions payroll-group-table-head-cell">操作</div>
+                </div>
+
+                <div class="payroll-group-table-body" data-payroll-group-table-body>
+                  ${renderPayrollGroupSettingsRows(pageRows)}
+                </div>
+
+                <div class="payroll-group-footer" data-payroll-group-footer>
+                  ${renderPayrollGroupSettingsPagination(filteredRows, totalPages, page)}
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+      </div>
+    </main>
+  `;
+}
+
+function renderPayrollGroupDetailPage() {
+  const detail = getPayrollGroupDetailState();
+  const row = getPayrollGroupDetailRow();
+  if (!row) {
+    return renderPayrollGroupSettingsListPage();
+  }
+
+  return `
+    <main class="page">
+      <div class="page-inner">
+        <div class="breadcrumb-row">
+          <div class="breadcrumb">
+            <span class="breadcrumb-segment">
+              <span class="breadcrumb-item">设置模块</span>
+            </span>
+            ${renderBreadcrumbSeparator()}
+            <span class="breadcrumb-segment">
+              <button class="breadcrumb-item breadcrumb-button" data-action="open-payroll-group-settings-list" type="button">薪酬组设置</button>
+            </span>
+            ${renderBreadcrumbSeparator()}
+            <span class="breadcrumb-segment">
+              <span class="breadcrumb-item is-active" data-payroll-group-detail-name>${escapeHtml(row.name)}</span>
+            </span>
+          </div>
+        </div>
+
+        <section class="content-card">
+          <div class="tab-row">
+            <div class="tabs payroll-group-detail-tabs" data-tab-group="payroll-group-detail">
+              ${renderPayrollGroupDetailTabs(detail.activeTab)}
+              <span class="tab-indicator" aria-hidden="true"></span>
+            </div>
+          </div>
+
+          <div class="payroll-group-page payroll-group-detail-page" data-payroll-group-detail-page>
+            ${renderPayrollGroupDetailContent(row, detail.activeTab)}
+          </div>
+        </section>
+      </div>
+    </main>
+  `;
+}
+
+function renderPayrollGroupSettingsPage() {
+  return isPayrollGroupDetailOpen() ? renderPayrollGroupDetailPage() : renderPayrollGroupSettingsListPage();
 }
 
 function renderGoalConfigSvgIcon(className, viewBox, content) {
@@ -5876,11 +8087,8 @@ function renderGoalConfigProcessTable() {
   `;
 }
 
-function renderGoalConfigProcessCreateModal(overlay) {
-  const guideStaticClass = isConfigPrepGuideStep(4) ? " config-prep-guide-static-modal" : "";
+function renderGoalConfigProcessCreateModalInner(overlay) {
   return `
-    <div class="backdrop" data-action="close-overlay"></div>
-    <div class="modal goal-config-process-create-modal${guideStaticClass}" data-overlay-panel="true" data-guide-id="config-prep-process-modal">
       <div class="panel-header">
         <div>
           <h2 class="panel-title">创建流程</h2>
@@ -5899,7 +8107,41 @@ function renderGoalConfigProcessCreateModal(overlay) {
         <button class="modal-button" data-action="close-overlay" type="button">取消</button>
         <button class="modal-button-primary" data-action="confirm-goal-config-process-create" type="button">确认</button>
       </div>
-    </div>
+  `;
+}
+
+function syncGoalConfigProcessCreateModal() {
+  if (!state.overlay || state.overlay.type !== "goal-config-process-create") {
+    return false;
+  }
+
+  const modal = document.querySelector(".goal-config-process-create-modal");
+  if (!(modal instanceof HTMLElement)) {
+    return false;
+  }
+
+  const input = modal.querySelector('[data-field="goal-config-create-process-name"]');
+  const preserveFocus = input instanceof HTMLInputElement ? getInputPreserveFocus(input) : null;
+  modal.innerHTML = renderGoalConfigProcessCreateModalInner(state.overlay);
+
+  if (preserveFocus?.selector) {
+    const nextInput = modal.querySelector(preserveFocus.selector);
+    if (nextInput instanceof HTMLInputElement) {
+      nextInput.focus();
+      if (typeof preserveFocus.start === "number" && typeof preserveFocus.end === "number") {
+        nextInput.setSelectionRange(preserveFocus.start, preserveFocus.end);
+      }
+    }
+  }
+
+  return true;
+}
+
+function renderGoalConfigProcessCreateModal(overlay) {
+  const guideStaticClass = isConfigPrepGuideStep(4) ? " config-prep-guide-static-modal" : "";
+  return `
+    <div class="backdrop" data-action="close-overlay"></div>
+    <div class="modal goal-config-process-create-modal${guideStaticClass}" data-overlay-panel="true" data-guide-id="config-prep-process-modal">${renderGoalConfigProcessCreateModalInner(overlay)}</div>
   `;
 }
 
@@ -6074,12 +8316,13 @@ function renderGoalConfigPage() {
 
         <section class="content-card">
           <div class="tab-row">
-            <div class="tabs">
+            <div class="tabs" data-tab-group="goal-config">
               <button
                 class="tab ${state.goalConfig.activeTab === "library" ? "is-active" : ""}"
                 data-action="set-goal-config-tab"
                 data-value="library"
                 data-guide-id="config-prep-tab-library"
+                data-tab-value="library"
                 type="button"
               >
                 目标库
@@ -6089,10 +8332,12 @@ function renderGoalConfigPage() {
                 data-action="set-goal-config-tab"
                 data-value="process"
                 data-guide-id="config-prep-tab-process"
+                data-tab-value="process"
                 type="button"
               >
                 流程库
               </button>
+              <span class="tab-indicator" aria-hidden="true"></span>
             </div>
             <button class="launch-button" data-action="open-start-goal" data-guide-id="launch-advance-entry" type="button">
               <span>发起目标</span>
@@ -6144,10 +8389,11 @@ function renderMyGoalsPage() {
 
         <section class="content-card">
           <div class="tab-row tab-row-simple">
-            <div class="tabs">
-              <button class="tab ${activeMyGoalTab === "pending" ? "is-active" : ""}" data-action="set-my-goal-tab" data-value="pending" type="button">待处理</button>
-              <button class="tab ${activeMyGoalTab === "executing" ? "is-active" : ""}" data-action="set-my-goal-tab" data-value="executing" type="button">执行中</button>
-              <button class="tab ${activeMyGoalTab === "completed" ? "is-active" : ""}" data-action="set-my-goal-tab" data-value="completed" type="button">已完成</button>
+            <div class="tabs" data-tab-group="my-goals">
+              <button class="tab ${activeMyGoalTab === "pending" ? "is-active" : ""}" data-action="set-my-goal-tab" data-value="pending" data-tab-value="pending" type="button">待处理</button>
+              <button class="tab ${activeMyGoalTab === "executing" ? "is-active" : ""}" data-action="set-my-goal-tab" data-value="executing" data-tab-value="executing" type="button">执行中</button>
+              <button class="tab ${activeMyGoalTab === "completed" ? "is-active" : ""}" data-action="set-my-goal-tab" data-value="completed" data-tab-value="completed" type="button">已完成</button>
+              <span class="tab-indicator" aria-hidden="true"></span>
             </div>
           </div>
 
@@ -6201,9 +8447,10 @@ function renderGoalManagementPage() {
 
         <section class="content-card">
           <div class="tab-row">
-            <div class="tabs">
-              <button class="tab ${state.activeTab === "ongoing" ? "is-active" : ""}" data-action="set-tab" data-value="ongoing" type="button">进行中</button>
-              <button class="tab ${state.activeTab === "completed" ? "is-active" : ""}" data-action="set-tab" data-value="completed" type="button">已完成</button>
+            <div class="tabs" data-tab-group="goal-management">
+              <button class="tab ${state.activeTab === "ongoing" ? "is-active" : ""}" data-action="set-tab" data-value="ongoing" data-tab-value="ongoing" type="button">进行中</button>
+              <button class="tab ${state.activeTab === "completed" ? "is-active" : ""}" data-action="set-tab" data-value="completed" data-tab-value="completed" type="button">已完成</button>
+              <span class="tab-indicator" aria-hidden="true"></span>
             </div>
             <button class="launch-button" data-action="open-start-goal" data-guide-id="launch-advance-entry" type="button">
               <span>发起目标</span>
@@ -6256,6 +8503,9 @@ function renderActivePage() {
   }
   if (STATS_PAGE_KEYS.includes(state.activePage) || state.activePage === "stats-module") {
     return renderDevelopingPage(state.activePage);
+  }
+  if (state.activePage === "company-info") {
+    return renderPayrollGroupSettingsPage();
   }
   if (SETTINGS_PAGE_KEYS.includes(state.activePage) || state.activePage === "settings-module") {
     return renderDevelopingPage(state.activePage);
@@ -6387,23 +8637,43 @@ function renderPendingDrawer(goal) {
   `;
 }
 
-function renderConfirmModal(overlay) {
+function renderConfirmModalInner(overlay) {
+  const messages = [overlay.summary, overlay.description].filter(Boolean);
   return `
-    <div class="backdrop" data-action="close-overlay"></div>
-    <div class="modal confirm-modal" data-overlay-panel="true">
-      <div class="panel-header">
-        <div>
-          <h2 class="panel-title">${escapeHtml(overlay.title)}</h2>
-          <p class="panel-subtitle">${escapeHtml(overlay.summary)}</p>
-        </div>
-        <button class="close-button" data-action="close-overlay" type="button">×</button>
+      <div class="confirm-modal-header">
+        <h2 class="confirm-modal-title">${escapeHtml(overlay.title)}</h2>
+        <button class="confirm-modal-close-button" data-action="close-overlay" type="button" aria-label="关闭二级提示">
+          <img class="confirm-modal-close-icon" src="./assets/payroll-group-create-close.svg" alt="" />
+        </button>
       </div>
-      <div class="confirm-copy">${escapeHtml(overlay.description)}</div>
-      <div class="panel-footer">
+      <div class="confirm-modal-copy">
+        ${messages.map((message) => `<p class="confirm-modal-message">${escapeHtml(message)}</p>`).join("")}
+      </div>
+      <div class="confirm-modal-footer">
         <button class="modal-button" data-action="close-overlay" type="button">取消</button>
         <button class="${escapeHtml(overlay.confirmButtonClassName || "modal-button-primary")}" data-action="confirm-overlay" type="button">${escapeHtml(overlay.confirmLabel || "确认")}</button>
       </div>
-    </div>
+  `;
+}
+
+function syncConfirmModal() {
+  if (!state.overlay || state.overlay.type !== "confirm") {
+    return false;
+  }
+
+  const modal = document.querySelector(".confirm-modal");
+  if (!(modal instanceof HTMLElement)) {
+    return false;
+  }
+
+  modal.innerHTML = renderConfirmModalInner(state.overlay);
+  return true;
+}
+
+function renderConfirmModal(overlay) {
+  return `
+    <div class="backdrop" data-action="close-overlay"></div>
+    <div class="modal confirm-modal" data-overlay-panel="true">${renderConfirmModalInner(overlay)}</div>
   `;
 }
 
@@ -6758,6 +9028,866 @@ function renderInfoModal(overlay) {
   `;
 }
 
+function renderPayrollGroupFieldCreateRadioGroup(fieldName, action, options, selectedValue, ariaLabel) {
+  return `
+    <div class="goal-config-type-switch payroll-group-field-create-radio-group" role="radiogroup" aria-label="${escapeHtml(
+      ariaLabel
+    )}">
+      ${options
+        .map(
+          (option) => `
+            <button
+              class="goal-config-type-radio ${selectedValue === option.key ? "is-active" : ""}"
+              data-action="${escapeHtml(action)}"
+              data-field="${escapeHtml(fieldName)}"
+              data-value="${escapeHtml(option.key)}"
+              type="button"
+              role="radio"
+              aria-checked="${selectedValue === option.key ? "true" : "false"}"
+            >
+              <span class="goal-config-type-radio-indicator"></span>
+              <span class="goal-config-type-radio-label">${escapeHtml(option.label)}</span>
+            </button>
+          `
+        )
+        .join("")}
+    </div>
+  `;
+}
+
+function renderPayrollGroupRequiredIcon(className = "") {
+  return `
+    <span class="${escapeHtml(className)}" aria-hidden="true">
+      <img class="payroll-group-field-create-required-icon" src="./assets/required.svg" alt="" />
+    </span>
+  `;
+}
+
+function renderPayrollGroupFieldCreateLabel(label, { className = "", required = true } = {}) {
+  return `
+    <span class="payroll-group-field-create-label-block ${escapeHtml(className)}">
+      ${required ? renderPayrollGroupRequiredIcon("payroll-group-field-create-label-required") : ""}
+      <span class="payroll-group-field-create-label-text">${escapeHtml(label)}</span>
+    </span>
+  `;
+}
+
+function renderPayrollGroupFieldCreateTextControl(fieldName, value, placeholder, inputMode = "text") {
+  return `
+    <span class="payroll-group-field-create-control-shell">
+      <input
+        class="payroll-group-field-create-input"
+        data-field="${escapeHtml(fieldName)}"
+        type="text"
+        ${inputMode === "decimal" ? 'inputmode="decimal"' : ""}
+        value="${escapeHtml(value || "")}"
+        placeholder="${escapeHtml(placeholder)}"
+      />
+    </span>
+  `;
+}
+
+function renderPayrollGroupFieldCreateFormulaPreview(formulaConfig) {
+  const compactFormula = String(formulaConfig || "").replace(/\s+/g, " ").trim();
+  if (!compactFormula) {
+    return '<span class="payroll-group-formula-trigger-placeholder">点击打开公式编辑器，按你的规则组合字段与函数</span>';
+  }
+  return `<span class="payroll-group-formula-trigger-value">${escapeHtml(compactFormula)}</span>`;
+}
+
+function renderPayrollGroupFieldCreateFormulaSummary(overlay) {
+  const preview = renderPayrollGroupFieldCreateFormulaPreview(overlay.formulaConfig);
+  const description = String(overlay.formulaDescription || "").trim();
+  return `
+    <div class="payroll-group-field-create-subgroup">
+      ${renderPayrollGroupFieldCreateLabel("公式配置")}
+      <button class="payroll-group-formula-trigger" data-action="open-payroll-group-field-formula-editor" type="button">
+        <span class="payroll-group-formula-trigger-copy">
+          <span class="payroll-group-formula-trigger-title">打开公式编辑器</span>
+          ${preview}
+        </span>
+        <span class="payroll-group-formula-trigger-action">${overlay.formulaConfig ? "编辑" : "配置"}</span>
+      </button>
+      ${
+        description
+          ? `
+            <div class="payroll-group-formula-description-preview">
+              <span class="payroll-group-formula-description-preview-label">说明</span>
+              <span class="payroll-group-formula-description-preview-value">${escapeHtml(description)}</span>
+            </div>
+          `
+          : ""
+      }
+    </div>
+  `;
+}
+
+function renderPayrollGroupDetailFormulaEditorLineNumbers(formula) {
+  const lineCount = Math.max(1, String(formula || "").split("\n").length);
+  return Array.from({ length: lineCount }, (_, index) => `<span>${index + 1}</span>`).join("");
+}
+
+function renderPayrollGroupDetailFormulaEditorHighlight(formula) {
+  const source = String(formula || "");
+  if (!source) {
+    return " ";
+  }
+
+  const regex = /\{[^{}\n]+\}|(?:\b\d+(?:\.\d+)?\b)|(?:\b[A-Z][A-Z0-9_]*(?=\s*\())/g;
+  let cursor = 0;
+  let html = "";
+  let match = regex.exec(source);
+
+  while (match) {
+    if (match.index > cursor) {
+      html += escapeHtml(source.slice(cursor, match.index));
+    }
+
+    const token = match[0];
+    if (token.startsWith("{")) {
+      html += `<span class="payroll-group-formula-editor-token payroll-group-formula-editor-token-field">${escapeHtml(token)}</span>`;
+    } else if (/^\d/.test(token)) {
+      html += `<span class="payroll-group-formula-editor-token payroll-group-formula-editor-token-number">${escapeHtml(token)}</span>`;
+    } else {
+      html += `<span class="payroll-group-formula-editor-token payroll-group-formula-editor-token-function">${escapeHtml(token)}</span>`;
+    }
+    cursor = match.index + token.length;
+    match = regex.exec(source);
+  }
+
+  if (cursor < source.length) {
+    html += escapeHtml(source.slice(cursor));
+  }
+
+  return source.endsWith("\n") ? `${html}\n ` : html;
+}
+
+function renderPayrollGroupFieldFormulaEditorModal(overlay) {
+  const nextOverlay = normalizePayrollGroupDetailFieldCreateOverlay(overlay);
+  const formulaEditor = nextOverlay.formulaEditor;
+  const fieldKeyword = formulaEditor.fieldKeyword.trim().toLowerCase();
+  const functionKeyword = formulaEditor.functionKeyword.trim().toLowerCase();
+  const fieldOptions = getPayrollGroupDetailFormulaReferenceOptions(nextOverlay).filter((item) =>
+    !fieldKeyword || item.label.toLowerCase().includes(fieldKeyword)
+  );
+  const functionOptions = PAYROLL_GROUP_DETAIL_FORMULA_EDITOR_FUNCTION_OPTIONS.filter((item) =>
+    !functionKeyword ||
+    item.label.toLowerCase().includes(functionKeyword) ||
+    item.signature.toLowerCase().includes(functionKeyword) ||
+    item.description.toLowerCase().includes(functionKeyword)
+  );
+
+  return `
+    <div class="payroll-group-formula-editor-layer">
+      <div class="backdrop payroll-group-formula-editor-backdrop" data-action="close-payroll-group-formula-editor"></div>
+      <div class="modal payroll-group-formula-editor-modal" data-overlay-panel="true" role="dialog" aria-modal="true" aria-label="公式编辑器">
+        <div class="payroll-group-formula-editor-header">
+          <h2 class="payroll-group-formula-editor-title">公式编辑器</h2>
+          <button class="payroll-group-formula-editor-close" data-action="close-payroll-group-formula-editor" type="button" aria-label="关闭公式编辑器">×</button>
+        </div>
+
+        <div class="payroll-group-formula-editor-body">
+          <section class="payroll-group-formula-editor-main-panel">
+            <div class="payroll-group-formula-editor-code-shell">
+              <div class="payroll-group-formula-editor-code-toolbar">
+                <span class="payroll-group-formula-editor-code-label">公式</span>
+                <span class="payroll-group-formula-editor-code-hint">字段请使用 <code>{字段名}</code> 引用，函数可从右侧直接插入</span>
+              </div>
+              <div class="payroll-group-formula-editor-code-area">
+                <div class="payroll-group-formula-editor-line-numbers" data-formula-editor-line-numbers>${renderPayrollGroupDetailFormulaEditorLineNumbers(
+                  formulaEditor.draftFormula
+                )}</div>
+                <div class="payroll-group-formula-editor-code-layer">
+                  <pre class="payroll-group-formula-editor-highlight" data-formula-editor-highlight>${renderPayrollGroupDetailFormulaEditorHighlight(
+                    formulaEditor.draftFormula
+                  )}</pre>
+                  <textarea
+                    class="payroll-group-formula-editor-input"
+                    data-field="payroll-group-field-formula-editor-input"
+                    spellcheck="false"
+                    placeholder="例如：ROUND({基本工资} + {岗位津贴} * {出勤天数}, 2)"
+                  >${escapeHtml(formulaEditor.draftFormula)}</textarea>
+                  ${
+                    formulaEditor.draftFormula
+                      ? ""
+                      : '<div class="payroll-group-formula-editor-empty-hint">在这里输入公式，右侧字段和函数都可以一键插入。</div>'
+                  }
+                </div>
+              </div>
+            </div>
+
+            <label class="payroll-group-formula-editor-description">
+              <span class="payroll-group-formula-editor-panel-label">说明</span>
+              <input
+                class="payroll-group-formula-editor-description-input"
+                data-field="payroll-group-field-formula-editor-description"
+                type="text"
+                value="${escapeHtml(formulaEditor.draftDescription)}"
+                placeholder="例如：用于计算员工当月应发基础收入"
+              />
+            </label>
+          </section>
+
+          <aside class="payroll-group-formula-editor-side-panel">
+            <section class="payroll-group-formula-editor-reference-panel">
+              <div class="payroll-group-formula-editor-panel-header">
+                <span class="payroll-group-formula-editor-panel-title">字段引用</span>
+              </div>
+              <label class="payroll-group-formula-editor-search">
+                <input
+                  class="payroll-group-formula-editor-search-input"
+                  data-field="payroll-group-field-formula-editor-field-search"
+                  type="text"
+                  value="${escapeHtml(formulaEditor.fieldKeyword)}"
+                  placeholder="搜索字段"
+                />
+              </label>
+              <div class="payroll-group-formula-editor-tag-list">
+                ${
+                  fieldOptions.length
+                    ? fieldOptions
+                        .map(
+                          (item) => `
+                            <button
+                              class="payroll-group-formula-editor-tag"
+                              data-action="insert-payroll-group-field-formula-reference"
+                              data-value="${escapeHtml(item.key)}"
+                              type="button"
+                            >
+                              <span class="payroll-group-formula-editor-tag-label">${escapeHtml(item.label)}</span>
+                              <span class="payroll-group-formula-editor-tag-meta">${escapeHtml(
+                                getPayrollGroupDetailSectionLabel(item.sectionKey)
+                              )}</span>
+                            </button>
+                          `
+                        )
+                        .join("")
+                    : '<div class="payroll-group-formula-editor-empty-panel">没有找到匹配字段</div>'
+                }
+              </div>
+            </section>
+
+            <section class="payroll-group-formula-editor-reference-panel">
+              <div class="payroll-group-formula-editor-panel-header">
+                <span class="payroll-group-formula-editor-panel-title">公式引用</span>
+              </div>
+              <label class="payroll-group-formula-editor-search">
+                <input
+                  class="payroll-group-formula-editor-search-input"
+                  data-field="payroll-group-field-formula-editor-function-search"
+                  type="text"
+                  value="${escapeHtml(formulaEditor.functionKeyword)}"
+                  placeholder="搜索函数"
+                />
+              </label>
+              <div class="payroll-group-formula-editor-function-list">
+                ${
+                  functionOptions.length
+                    ? functionOptions
+                        .map(
+                          (item) => `
+                            <button
+                              class="payroll-group-formula-editor-function"
+                              data-action="insert-payroll-group-field-formula-function"
+                              data-value="${escapeHtml(item.key)}"
+                              type="button"
+                            >
+                              <span class="payroll-group-formula-editor-function-name">${escapeHtml(item.label)}</span>
+                              <span class="payroll-group-formula-editor-function-signature">${escapeHtml(item.signature)}</span>
+                              <span class="payroll-group-formula-editor-function-description">${escapeHtml(item.description)}</span>
+                            </button>
+                          `
+                        )
+                        .join("")
+                    : '<div class="payroll-group-formula-editor-empty-panel">没有找到匹配函数</div>'
+                }
+              </div>
+            </section>
+          </aside>
+        </div>
+
+        <div class="payroll-group-formula-editor-footer">
+          <button class="modal-button" data-action="close-payroll-group-formula-editor" type="button">取消</button>
+          <button class="modal-button-primary" data-action="save-payroll-group-formula-editor" type="button">保存</button>
+        </div>
+      </div>
+    </div>
+  `;
+}
+
+function renderPayrollGroupFieldCreateDropdown(dropdownKey, action, value, options, placeholder, showEmptyOption = true) {
+  const selectedOption = options.find((option) => option.key === value) || null;
+  const buttonLabel = selectedOption ? selectedOption.label : placeholder;
+  const panelOptions = [
+    ...(showEmptyOption
+      ? [
+          `
+            <button class="dropdown-option ${value ? "" : "is-active"}" data-action="${escapeHtml(action)}" data-value="" type="button">
+              ${escapeHtml(placeholder)}
+            </button>
+          `,
+        ]
+      : []),
+    ...options.map(
+      (option) => `
+        <button class="dropdown-option ${value === option.key ? "is-active" : ""}" data-action="${escapeHtml(action)}" data-value="${escapeHtml(option.key)}" type="button">
+          ${escapeHtml(option.label)}
+        </button>
+      `
+    ),
+  ].join("");
+
+  return `
+    <div class="control payroll-group-field-create-select-control">
+      <button
+        class="${dropdownTriggerClass("control-button payroll-group-field-create-select-button", dropdownKey)} ${selectedOption ? "" : "is-placeholder"}"
+        data-action="toggle-dropdown"
+        data-value="${escapeHtml(dropdownKey)}"
+        type="button"
+        aria-haspopup="menu"
+        aria-expanded="${isDropdownOpen(dropdownKey) ? "true" : "false"}"
+      >
+        <span class="truncate">${escapeHtml(buttonLabel)}</span>
+        ${renderControlArrow()}
+      </button>
+      ${renderDropdownPanel(
+        dropdownKey,
+        panelOptions,
+        "dropdown-panel payroll-group-field-create-select-menu"
+      )}
+    </div>
+  `;
+}
+
+function renderPayrollGroupFieldCreatePasswordControl(fieldName, value, placeholder, visible) {
+  return `
+    <span class="payroll-group-field-create-control-shell payroll-group-field-create-password-shell">
+      <input
+        class="payroll-group-field-create-input"
+        data-field="${escapeHtml(fieldName)}"
+        type="${visible ? "text" : "password"}"
+        value="${escapeHtml(value || "")}"
+        placeholder="${escapeHtml(placeholder)}"
+      />
+      <button
+        class="payroll-group-field-create-password-toggle"
+        data-action="toggle-payroll-group-field-create-custom-auth-visible"
+        type="button"
+      >${visible ? "隐藏" : "显示"}</button>
+    </span>
+  `;
+}
+
+function renderPayrollGroupFieldCreateCustomExternalFieldCell(overlay, field, index) {
+  if (!canSelectPayrollGroupDetailCustomExternalField(overlay.sectionKey, field)) {
+    return '<span class="payroll-group-custom-external-disabled-map">仅支持数值类型</span>';
+  }
+
+  const dropdownKey = `payroll-group-field-create-custom-field-${index}`;
+  const mappingOptions = getPayrollGroupDetailCustomExternalMappingOptionsForField(field).map((option) => ({
+    key: `${field.path}|||${option.key}`,
+    label: option.label,
+  }));
+  const selectedMappingKey = overlay.customExternalMappings?.[field.path] || "";
+  const selectedValue = selectedMappingKey ? `${field.path}|||${selectedMappingKey}` : "";
+  return renderPayrollGroupFieldCreateDropdown(
+    dropdownKey,
+    "set-payroll-group-field-create-custom-field",
+    selectedValue,
+    mappingOptions,
+    "请选择",
+    false
+  );
+}
+
+function renderPayrollGroupFieldCreateCustomExternalFields(overlay) {
+  const fields = normalizePayrollGroupDetailCustomExternalFields(overlay.customExternalFields);
+  if (!fields.length) {
+    return `
+      <div class="payroll-group-custom-external-empty">
+        暂无可选字段，请检查接口返回的 JSON 数据。
+      </div>
+    `;
+  }
+
+  return `
+    <div class="payroll-group-custom-external-field-table">
+      <div class="payroll-group-custom-external-field-row payroll-group-custom-external-field-head">
+        <div class="payroll-group-custom-external-field-name">字段名称</div>
+        <div class="payroll-group-custom-external-field-map">映射字段</div>
+      </div>
+      ${fields
+        .map(
+          (field, index) => `
+            <div class="payroll-group-custom-external-field-row">
+              <div class="payroll-group-custom-external-field-name">
+                <span class="truncate" title="${escapeHtml(field.label)}">${escapeHtml(field.label)}</span>
+              </div>
+              <div class="payroll-group-custom-external-field-map">
+                ${renderPayrollGroupFieldCreateCustomExternalFieldCell(overlay, field, index)}
+              </div>
+            </div>
+          `
+        )
+        .join("")}
+    </div>
+  `;
+}
+
+function renderPayrollGroupFieldCreateCustomExternalResult(overlay) {
+  if (overlay.customExternalFetchStatus === "error") {
+    return `
+      <div class="payroll-group-custom-external-message is-error">
+        ${escapeHtml(overlay.customExternalFetchError || "获取失败，请检查接口地址和鉴权信息")}
+      </div>
+    `;
+  }
+  if (overlay.customExternalFetchStatus === "success") {
+    return `
+      <section class="payroll-group-field-create-card payroll-group-custom-external-result-card">
+        ${renderPayrollGroupFieldCreateCustomExternalFields(overlay)}
+      </section>
+    `;
+  }
+  return "";
+}
+
+function renderPayrollGroupFieldCreateCustomExternalConfig(overlay) {
+  const authType = getPayrollGroupDetailCustomExternalAuthOption(overlay.customExternalAuthType).key;
+  const showAuthValue = isPayrollGroupDetailCustomExternalAuthValueRequired(authType);
+  const fetchDisabled = !canFetchPayrollGroupDetailCustomExternalFields(overlay);
+
+  return `
+    <div class="payroll-group-field-create-subgroup">
+      ${renderPayrollGroupFieldCreateLabel("请求地址（URL）")}
+      ${renderPayrollGroupFieldCreateTextControl(
+        "payroll-group-field-create-custom-url",
+        overlay.customExternalUrl,
+        "https://api.example.com/attendance/overtime"
+      )}
+    </div>
+    <div class="payroll-group-field-create-subgroup">
+      ${renderPayrollGroupFieldCreateLabel("鉴权方式", { required: false })}
+      ${renderPayrollGroupFieldCreateDropdown(
+        "payroll-group-field-create-custom-auth-type",
+        "set-payroll-group-field-create-custom-auth-type",
+        authType,
+        PAYROLL_GROUP_DETAIL_FIELD_CREATE_CUSTOM_EXTERNAL_AUTH_OPTIONS,
+        "请选择",
+        false
+      )}
+    </div>
+    ${
+      showAuthValue
+        ? `
+          <div class="payroll-group-field-create-subgroup">
+            ${renderPayrollGroupFieldCreateLabel("鉴权值")}
+            ${renderPayrollGroupFieldCreatePasswordControl(
+              "payroll-group-field-create-custom-auth-value",
+              overlay.customExternalAuthValue,
+              authType === "bearer_token" ? "填入 Token" : "填入 API Key",
+              overlay.customExternalAuthValueVisible
+            )}
+          </div>
+        `
+        : ""
+    }
+    <div class="payroll-group-custom-external-actions">
+      <button
+        class="modal-button-primary"
+        data-action="fetch-payroll-group-field-create-custom-fields"
+        type="button"
+        ${fetchDisabled ? "disabled" : ""}
+      >获取字段</button>
+    </div>
+  `;
+}
+
+function renderPayrollGroupFieldCreateAutoConfig(overlay) {
+  if (overlay.itemType === "other-application") {
+    const isCustomExternalSource = isPayrollGroupDetailCustomExternalSource(overlay.sourceApp);
+    const sourceFormOptions = getPayrollGroupDetailFieldCreateSourceFormOptions(overlay.sourceApp);
+    const sourceFieldOptions = getPayrollGroupDetailFieldCreateSourceFieldOptions(overlay.sourceApp, overlay.sourceForm);
+    const showSourceForm = !isCustomExternalSource && sourceFormOptions.length > 0;
+    const showSourceField = !isCustomExternalSource && !!overlay.sourceApp && (!showSourceForm || !!overlay.sourceForm);
+    const showMatchField = showSourceField && !!overlay.sourceField;
+
+    return `
+      <div class="payroll-group-field-create-subgroup">
+        ${renderPayrollGroupFieldCreateLabel("来源应用")}
+        ${renderPayrollGroupFieldCreateDropdown(
+          "payroll-group-field-create-source-app",
+          "set-payroll-group-field-create-source-app",
+          overlay.sourceApp,
+          PAYROLL_GROUP_DETAIL_FIELD_CREATE_SOURCE_APP_OPTIONS,
+          "请选择",
+          false
+        )}
+      </div>
+      ${isCustomExternalSource ? renderPayrollGroupFieldCreateCustomExternalConfig(overlay) : ""}
+      ${
+          showSourceForm
+          ? `
+            <div class="payroll-group-field-create-subgroup">
+              ${renderPayrollGroupFieldCreateLabel("来源表单")}
+              ${renderPayrollGroupFieldCreateDropdown(
+                "payroll-group-field-create-source-form",
+                "set-payroll-group-field-create-source-form",
+                overlay.sourceForm,
+                sourceFormOptions,
+                "请选择",
+                false
+              )}
+            </div>
+          `
+          : ""
+      }
+      ${
+          showSourceField
+          ? `
+            <div class="payroll-group-field-create-subgroup">
+              ${renderPayrollGroupFieldCreateLabel("来源字段")}
+              ${renderPayrollGroupFieldCreateDropdown(
+                "payroll-group-field-create-source-field",
+                "set-payroll-group-field-create-source-field",
+                overlay.sourceField,
+                sourceFieldOptions,
+                "请选择",
+                false
+              )}
+            </div>
+          `
+          : ""
+      }
+      ${
+          showMatchField
+          ? `
+            <div class="payroll-group-field-create-subgroup">
+              ${renderPayrollGroupFieldCreateLabel("匹配字段")}
+              ${renderPayrollGroupFieldCreateDropdown(
+                "payroll-group-field-create-match-field",
+                "set-payroll-group-field-create-match-field",
+                overlay.matchField,
+                PAYROLL_GROUP_DETAIL_FIELD_CREATE_MATCH_FIELD_OPTIONS,
+                "请选择",
+                false
+              )}
+            </div>
+          `
+          : ""
+      }
+    `;
+  }
+
+  return renderPayrollGroupFieldCreateFormulaSummary(overlay);
+}
+
+function renderPayrollGroupFieldCreateManualConfig(overlay) {
+  if (overlay.itemType === "number") {
+    return `
+      <div class="payroll-group-field-create-subgroup">
+        ${renderPayrollGroupFieldCreateLabel("默认数值")}
+        ${renderPayrollGroupFieldCreateTextControl(
+          "payroll-group-field-create-default-number",
+          overlay.defaultNumber,
+          "请输入",
+          "decimal"
+        )}
+      </div>
+    `;
+  }
+
+  return `
+    <div class="payroll-group-field-create-subgroup">
+      ${renderPayrollGroupFieldCreateLabel("默认文本")}
+      ${renderPayrollGroupFieldCreateTextControl("payroll-group-field-create-default-text", overlay.defaultText, "请输入")}
+    </div>
+  `;
+}
+
+function renderPayrollGroupFieldCreateDrawerInner(overlay) {
+  const nextOverlay = normalizePayrollGroupDetailFieldCreateOverlay(overlay);
+  const isEditMode = nextOverlay.submitMode === "edit";
+  const title = isEditMode
+    ? formatPayrollGroupDetailEditLabel(nextOverlay.sectionKey)
+    : formatPayrollGroupDetailCreateLabel(nextOverlay.sectionKey);
+  const typeOptions = getPayrollGroupDetailFieldCreateTypes(nextOverlay.mode);
+  const showTypeSection = nextOverlay.sectionKey === "info";
+  const isAutoMode = nextOverlay.mode === "auto";
+  const isManualMode = nextOverlay.mode === "manual";
+  const showCustomExternalResult =
+    showTypeSection &&
+    isAutoMode &&
+    nextOverlay.itemType === "other-application" &&
+    isPayrollGroupDetailCustomExternalSource(nextOverlay.sourceApp);
+
+  return `
+    <div class="payroll-group-create-header">
+      <h2 class="payroll-group-create-title">${escapeHtml(title)}</h2>
+      <button class="payroll-group-create-close-button" data-action="close-overlay" type="button" aria-label="关闭${escapeHtml(
+        title
+      )}抽屉">
+        <img class="payroll-group-create-close-icon" src="./assets/payroll-group-create-close.svg" alt="" />
+      </button>
+    </div>
+    <div class="payroll-group-field-create-scroll">
+      <div class="payroll-group-field-create-body">
+        <section class="payroll-group-field-create-card">
+          <label class="payroll-group-field-create-field payroll-group-field-create-field--name">
+            ${renderPayrollGroupFieldCreateLabel("项名称", { className: "payroll-group-field-create-name-title" })}
+            ${renderPayrollGroupFieldCreateTextControl("payroll-group-field-create-name", nextOverlay.name, "请输入")}
+          </label>
+
+          <div class="payroll-group-field-create-field">
+            ${renderPayrollGroupFieldCreateLabel("项模式")}
+            ${renderPayrollGroupFieldCreateRadioGroup(
+              "payroll-group-field-create-mode",
+              "set-payroll-group-field-create-mode",
+              PAYROLL_GROUP_DETAIL_FIELD_CREATE_MODE_OPTIONS,
+              nextOverlay.mode,
+              "项模式"
+            )}
+          </div>
+        </section>
+
+        ${
+          showTypeSection
+            ? `
+              <section class="payroll-group-field-create-card">
+                <div class="payroll-group-field-create-field">
+                  ${renderPayrollGroupFieldCreateLabel("项类型")}
+                  ${renderPayrollGroupFieldCreateRadioGroup(
+                    "payroll-group-field-create-item-type",
+                    "set-payroll-group-field-create-type",
+                    typeOptions,
+                    nextOverlay.itemType,
+                    "项类型"
+                  )}
+                </div>
+                ${isAutoMode ? renderPayrollGroupFieldCreateAutoConfig(nextOverlay) : ""}
+                ${isManualMode ? renderPayrollGroupFieldCreateManualConfig(nextOverlay) : ""}
+              </section>
+              ${showCustomExternalResult ? renderPayrollGroupFieldCreateCustomExternalResult(nextOverlay) : ""}
+            `
+            : ""
+        }
+      </div>
+    </div>
+    <div class="payroll-group-field-create-footer">
+      <button class="modal-button" data-action="close-overlay" type="button">取消</button>
+      <button class="modal-button-primary" data-action="confirm-payroll-group-field-create" type="button">${
+        isEditMode ? "编辑" : "创建"
+      }</button>
+    </div>
+  `;
+}
+
+function renderPayrollGroupCreateModalInner(overlay) {
+  return `
+      <div class="payroll-group-create-header">
+        <h2 class="payroll-group-create-title">创建薪酬组</h2>
+        <button class="payroll-group-create-close-button" data-action="close-overlay" type="button" aria-label="关闭创建薪酬组弹窗">
+          <img class="payroll-group-create-close-icon" src="./assets/payroll-group-create-close.svg" alt="" />
+        </button>
+      </div>
+      <div class="payroll-group-create-body">
+        <label class="payroll-group-create-field">
+          <span class="payroll-group-create-label">薪酬组名称</span>
+          <input
+            class="payroll-group-create-input"
+            data-field="payroll-group-create-name"
+            type="text"
+            value="${escapeHtml(overlay.groupName || "")}"
+            placeholder="请输入"
+          />
+        </label>
+      </div>
+      <div class="payroll-group-create-footer">
+        <button class="modal-button-primary" data-action="confirm-payroll-group-create" type="button">确定</button>
+      </div>
+  `;
+}
+
+function syncPayrollGroupCreateModal() {
+  if (!state.overlay || state.overlay.type !== "payroll-group-create") {
+    return false;
+  }
+
+  const modal = document.querySelector(".payroll-group-create-modal");
+  if (!(modal instanceof HTMLElement)) {
+    return false;
+  }
+
+  const input = modal.querySelector('[data-field="payroll-group-create-name"]');
+  const preserveFocus = input instanceof HTMLInputElement ? getInputPreserveFocus(input) : null;
+  modal.innerHTML = renderPayrollGroupCreateModalInner(state.overlay);
+
+  if (preserveFocus?.selector) {
+    const nextInput = modal.querySelector(preserveFocus.selector);
+    if (nextInput instanceof HTMLInputElement) {
+      nextInput.focus();
+      if (typeof preserveFocus.start === "number" && typeof preserveFocus.end === "number") {
+        nextInput.setSelectionRange(preserveFocus.start, preserveFocus.end);
+      }
+    }
+  }
+
+  return true;
+}
+
+function syncPayrollGroupFormulaEditorPresentation(textarea = null) {
+  const formulaInput =
+    textarea instanceof HTMLTextAreaElement
+      ? textarea
+      : document.querySelector('[data-field="payroll-group-field-formula-editor-input"]');
+  if (!(formulaInput instanceof HTMLTextAreaElement)) {
+    return false;
+  }
+
+  const codeArea = formulaInput.closest(".payroll-group-formula-editor-code-area");
+  if (!(codeArea instanceof HTMLElement)) {
+    return false;
+  }
+
+  if (state.overlay?.type === "payroll-group-field-create") {
+    const formulaEditor = normalizePayrollGroupDetailFormulaEditorState(state.overlay.formulaEditor, state.overlay);
+    if (formulaInput.scrollTop !== formulaEditor.scrollTop) {
+      formulaInput.scrollTop = formulaEditor.scrollTop;
+    }
+    if (formulaInput.scrollLeft !== formulaEditor.scrollLeft) {
+      formulaInput.scrollLeft = formulaEditor.scrollLeft;
+    }
+  }
+
+  const lineNumbers = codeArea.querySelector("[data-formula-editor-line-numbers]");
+  const highlight = codeArea.querySelector("[data-formula-editor-highlight]");
+  const nextLineNumbersHtml = renderPayrollGroupDetailFormulaEditorLineNumbers(formulaInput.value);
+  const nextHighlightHtml = renderPayrollGroupDetailFormulaEditorHighlight(formulaInput.value);
+
+  if (lineNumbers instanceof HTMLElement && lineNumbers.innerHTML !== nextLineNumbersHtml) {
+    lineNumbers.innerHTML = nextLineNumbersHtml;
+  }
+
+  if (highlight instanceof HTMLElement) {
+    if (highlight.innerHTML !== nextHighlightHtml) {
+      highlight.innerHTML = nextHighlightHtml;
+    }
+    highlight.style.transform = `translate(${-formulaInput.scrollLeft}px, ${-formulaInput.scrollTop}px)`;
+  }
+
+  if (lineNumbers instanceof HTMLElement) {
+    lineNumbers.style.transform = `translateY(${-formulaInput.scrollTop}px)`;
+  }
+
+  return true;
+}
+
+function focusPayrollGroupFormulaEditorInput(selectionStart = null, selectionEnd = selectionStart) {
+  const textarea = document.querySelector('[data-field="payroll-group-field-formula-editor-input"]');
+  if (!(textarea instanceof HTMLTextAreaElement)) {
+    return false;
+  }
+
+  textarea.focus();
+  if (typeof selectionStart === "number" && typeof selectionEnd === "number") {
+    textarea.setSelectionRange(selectionStart, selectionEnd);
+  }
+  syncPayrollGroupFormulaEditorPresentation(textarea);
+  return true;
+}
+
+function syncPayrollGroupFieldCreateDrawer() {
+  if (!state.overlay || state.overlay.type !== "payroll-group-field-create") {
+    return false;
+  }
+
+  const overlayRoot = document.querySelector(".overlay-root");
+  const drawer = document.querySelector(".payroll-group-field-create-drawer");
+  if (!(drawer instanceof HTMLElement) || !(overlayRoot instanceof HTMLElement)) {
+    return false;
+  }
+
+  const scrollContainer = drawer.querySelector(".payroll-group-field-create-scroll");
+  const scrollTop = scrollContainer instanceof HTMLElement ? scrollContainer.scrollTop : 0;
+  const menuScrollTops = [...drawer.querySelectorAll(".payroll-group-field-create-select-menu")].map((menu) =>
+    menu instanceof HTMLElement ? menu.scrollTop : 0
+  );
+  const activeElement = document.activeElement;
+  const preserveFocus =
+    activeElement instanceof HTMLElement && overlayRoot.contains(activeElement)
+      ? getInteractivePreserveFocus(activeElement)
+      : null;
+  const nextOverlay = normalizePayrollGroupDetailFieldCreateOverlay(state.overlay);
+  const nextDrawerHtml = renderPayrollGroupFieldCreateDrawerInner(nextOverlay);
+
+  if (drawer.innerHTML !== nextDrawerHtml) {
+    drawer.innerHTML = nextDrawerHtml;
+  }
+
+  const nextFormulaEditorHtml = nextOverlay.formulaEditor.open ? renderPayrollGroupFieldFormulaEditorModal(nextOverlay) : "";
+  const existingFormulaEditor = overlayRoot.querySelector(".payroll-group-formula-editor-layer");
+  if (nextFormulaEditorHtml) {
+    if (existingFormulaEditor instanceof HTMLElement) {
+      if (existingFormulaEditor.outerHTML !== nextFormulaEditorHtml) {
+        existingFormulaEditor.outerHTML = nextFormulaEditorHtml;
+      }
+    } else {
+      drawer.insertAdjacentHTML("afterend", nextFormulaEditorHtml);
+    }
+  } else {
+    existingFormulaEditor?.remove();
+  }
+
+  const nextScrollContainer = drawer.querySelector(".payroll-group-field-create-scroll");
+  if (nextScrollContainer instanceof HTMLElement) {
+    nextScrollContainer.scrollTop = scrollTop;
+  }
+
+  drawer.querySelectorAll(".payroll-group-field-create-select-menu").forEach((menu, index) => {
+    if (menu instanceof HTMLElement) {
+      menu.scrollTop = menuScrollTops[index] || 0;
+    }
+  });
+
+  if (preserveFocus?.selector) {
+    const nextFocusedElement = overlayRoot.querySelector(preserveFocus.selector);
+    if (nextFocusedElement instanceof HTMLElement) {
+      nextFocusedElement.focus();
+      if (
+        typeof preserveFocus.start === "number" &&
+        typeof preserveFocus.end === "number" &&
+        (nextFocusedElement instanceof HTMLInputElement || nextFocusedElement instanceof HTMLTextAreaElement)
+      ) {
+        nextFocusedElement.setSelectionRange(preserveFocus.start, preserveFocus.end);
+      }
+    }
+  }
+
+  syncPayrollGroupFormulaEditorPresentation();
+
+  flushDropdownChevronAnimations();
+  scheduleDropdownMotionStateCleanup();
+  return true;
+}
+
+function renderPayrollGroupCreateModal(overlay) {
+  return `
+    <div class="backdrop" data-action="close-overlay"></div>
+    <div class="modal payroll-group-create-modal" data-overlay-panel="true">${renderPayrollGroupCreateModalInner(overlay)}</div>
+  `;
+}
+
+function renderPayrollGroupFieldCreateDrawer(overlay) {
+  const nextOverlay = normalizePayrollGroupDetailFieldCreateOverlay(overlay);
+  return `
+    <div class="backdrop" data-action="close-overlay"></div>
+    <aside class="drawer payroll-group-field-create-drawer" data-overlay-panel="true">
+      ${renderPayrollGroupFieldCreateDrawerInner(nextOverlay)}
+    </aside>
+    ${nextOverlay.formulaEditor.open ? renderPayrollGroupFieldFormulaEditorModal(nextOverlay) : ""}
+  `;
+}
+
 function renderOverlay() {
   if (!state.overlay) {
     return "";
@@ -6798,11 +9928,107 @@ function renderOverlay() {
     return `<div class="overlay-root">${renderGoalConfigProcessGuideModal(state.overlay)}</div>`;
   }
 
+  if (state.overlay.type === "payroll-group-field-create") {
+    return `<div class="overlay-root">${renderPayrollGroupFieldCreateDrawer(state.overlay)}</div>`;
+  }
+
+  if (state.overlay.type === "payroll-group-create") {
+    return `<div class="overlay-root">${renderPayrollGroupCreateModal(state.overlay)}</div>`;
+  }
+
   if (state.overlay.type === "info") {
     return `<div class="overlay-root">${renderInfoModal(state.overlay)}</div>`;
   }
 
   return "";
+}
+
+function syncOverlayInPlace() {
+  if (!(app instanceof HTMLElement)) {
+    return false;
+  }
+
+  if (state.overlay?.type === "payroll-group-field-create" && syncPayrollGroupFieldCreateDrawer()) {
+    return true;
+  }
+
+  if (state.overlay?.type === "payroll-group-create" && syncPayrollGroupCreateModal()) {
+    return true;
+  }
+
+  const existingOverlayRoot = app.querySelector(".overlay-root");
+  const activeElement = document.activeElement;
+  const preserveFocus =
+    existingOverlayRoot instanceof HTMLElement &&
+    activeElement instanceof HTMLElement &&
+    existingOverlayRoot.contains(activeElement)
+      ? getInteractivePreserveFocus(activeElement)
+      : null;
+  const nextOverlayHtml = renderOverlay();
+
+  if (!nextOverlayHtml) {
+    if (existingOverlayRoot instanceof HTMLElement) {
+      existingOverlayRoot.remove();
+      return true;
+    }
+    return false;
+  }
+
+  if (existingOverlayRoot instanceof HTMLElement) {
+    if (existingOverlayRoot.outerHTML !== nextOverlayHtml) {
+      existingOverlayRoot.outerHTML = nextOverlayHtml;
+    }
+    if (preserveFocus?.selector) {
+      const nextFocusedElement = document.querySelector(preserveFocus.selector);
+      if (nextFocusedElement instanceof HTMLElement) {
+        nextFocusedElement.focus();
+        if (
+          typeof preserveFocus.start === "number" &&
+          typeof preserveFocus.end === "number" &&
+          nextFocusedElement instanceof HTMLInputElement
+        ) {
+          nextFocusedElement.setSelectionRange(preserveFocus.start, preserveFocus.end);
+        }
+        return true;
+      }
+    }
+    if (state.overlay?.type === "payroll-group-create") {
+      const input = document.querySelector('[data-field="payroll-group-create-name"]');
+      if (input instanceof HTMLInputElement) {
+        input.focus();
+      }
+    }
+    if (state.overlay?.type === "payroll-group-field-create") {
+      if (state.overlay.formulaEditor?.open) {
+        focusPayrollGroupFormulaEditorInput(state.overlay.formulaEditor.selectionStart, state.overlay.formulaEditor.selectionEnd);
+        return true;
+      }
+      const input = document.querySelector('[data-field="payroll-group-field-create-name"]');
+      if (input instanceof HTMLInputElement) {
+        input.focus();
+      }
+    }
+    return true;
+  }
+
+  app.insertAdjacentHTML("beforeend", nextOverlayHtml);
+  if (state.overlay?.type === "payroll-group-create") {
+    const input = document.querySelector('[data-field="payroll-group-create-name"]');
+    if (input instanceof HTMLInputElement) {
+      input.focus();
+    }
+  }
+  if (state.overlay?.type === "payroll-group-field-create") {
+    if (state.overlay.formulaEditor?.open) {
+      focusPayrollGroupFormulaEditorInput(state.overlay.formulaEditor.selectionStart, state.overlay.formulaEditor.selectionEnd);
+      return true;
+    }
+    const input = document.querySelector('[data-field="payroll-group-field-create-name"]');
+    if (input instanceof HTMLInputElement) {
+      input.focus();
+    }
+  }
+  return true;
 }
 
 function renderConfigPrepGuideShell() {
@@ -6951,6 +10177,43 @@ function buildGoalConfigGroupTransferOverlay(groupId) {
     sourceGroupId: groupId,
     goalIds: [],
     targetGroupId: options[0]?.id || null,
+  };
+}
+
+function buildPayrollGroupCreateOverlay() {
+  return {
+    type: "payroll-group-create",
+    groupName: "",
+  };
+}
+
+function buildPayrollGroupDeleteOverlay(row) {
+  return {
+    type: "confirm",
+    scope: "payroll-group",
+    kind: "delete",
+    rowId: row.id,
+    rowName: row.name,
+    title: "确认删除薪酬组",
+    summary: `本次将删除「${row.name}」。`,
+    description: "删除后当前薪酬组将立即从列表移除，操作不可恢复。",
+    confirmLabel: "删除",
+    confirmButtonClassName: "danger-button",
+  };
+}
+
+function buildPayrollGroupCopyOverlay(row) {
+  return {
+    type: "confirm",
+    scope: "payroll-group",
+    kind: "copy",
+    rowId: row.id,
+    rowName: row.name,
+    title: "确认复制薪酬组",
+    summary: `本次将复制「${row.name}」。`,
+    description: "复制后会在当前列表新增一个同配置的薪酬组，名称自动追加“（复制）”。",
+    confirmLabel: "确定",
+    confirmButtonClassName: "modal-button-primary",
   };
 }
 
@@ -7206,6 +10469,76 @@ function confirmOverlayAction() {
     clearGoalConfigPanels();
     showToast("流程已删除");
     return false;
+  }
+  if (state.overlay.scope === "payroll-group") {
+    if (state.overlay.kind === "copy") {
+      const row = getPayrollGroupSettingsRow(state.overlay.rowId);
+      if (!row) {
+        state.overlay = null;
+        syncOverlayInPlace();
+        return true;
+      }
+
+      const nextRowId = createRuntimeId("payroll-group");
+      const nextRows = [
+        Object.assign(clone(row), {
+          id: nextRowId,
+          name: makePayrollGroupCopyName(row.name),
+        }),
+        ...getPayrollGroupSettingsRows(),
+      ];
+      const nextSavedRuleSettingsByRowId = { ...getPayrollGroupSavedRuleSettingsMap() };
+      const nextDraftRuleSettingsByRowId = { ...getPayrollGroupRuleDraftSettingsMap() };
+      if (nextSavedRuleSettingsByRowId[row.id]) {
+        nextSavedRuleSettingsByRowId[nextRowId] = normalizePayrollGroupRuleSettings(nextSavedRuleSettingsByRowId[row.id]);
+      }
+      if (nextDraftRuleSettingsByRowId[row.id]) {
+        nextDraftRuleSettingsByRowId[nextRowId] = normalizePayrollGroupRuleSettings(nextDraftRuleSettingsByRowId[row.id]);
+      }
+      state.payrollGroupSettings = {
+        ...state.payrollGroupSettings,
+        rows: nextRows,
+        page: 1,
+        savedRuleSettingsByRowId: nextSavedRuleSettingsByRowId,
+        draftRuleSettingsByRowId: nextDraftRuleSettingsByRowId,
+      };
+      state.currentPayrollGroupId = getDefaultPayrollGroupId(nextRows, state.currentPayrollGroupId);
+      ensurePayrollGroupCreatorFilterVisible(nextRows[0].creator);
+      setRowMenuOpenState(null);
+      state.overlay = null;
+      showToast(`已复制「${row.name}」`);
+      syncPayrollGroupPage();
+      syncOverlayInPlace();
+      persistState();
+      return true;
+    }
+
+    const targetRowId = state.overlay.rowId;
+    const rowName = state.overlay.rowName || "薪酬组";
+    const remainingRows = getPayrollGroupSettingsRows().filter((row) => row.id !== targetRowId);
+    const nextSavedRuleSettingsByRowId = { ...getPayrollGroupSavedRuleSettingsMap() };
+    const nextDraftRuleSettingsByRowId = { ...getPayrollGroupRuleDraftSettingsMap() };
+    delete nextSavedRuleSettingsByRowId[targetRowId];
+    delete nextDraftRuleSettingsByRowId[targetRowId];
+    state.payrollGroupSettings = {
+      ...state.payrollGroupSettings,
+      rows: remainingRows,
+      savedRuleSettingsByRowId: nextSavedRuleSettingsByRowId,
+      draftRuleSettingsByRowId: nextDraftRuleSettingsByRowId,
+    };
+    state.currentPayrollGroupId = getDefaultPayrollGroupId(remainingRows, state.currentPayrollGroupId);
+    state.payrollGroupSettings.creator = isValidPayrollGroupCreator(state.payrollGroupSettings.creator, remainingRows)
+      ? state.payrollGroupSettings.creator
+      : "all";
+    if (state.openRowMenu === getPayrollGroupSettingsRowMenuId(targetRowId)) {
+      setRowMenuOpenState(null);
+    }
+    state.overlay = null;
+    showToast(`已删除「${rowName}」`);
+    syncPayrollGroupPage();
+    syncOverlayInPlace();
+    persistState();
+    return true;
   }
   if (state.overlay.scope === "demo-reset-step-1") {
     state.overlay = buildResetDemoConfirmOverlay(2);
@@ -7502,39 +10835,69 @@ function saveGoalConfigDraft() {
 }
 
 function getInputPreserveFocus(input) {
-  if (!(input instanceof HTMLInputElement) || !input.dataset.field) {
+  if (!(input instanceof HTMLElement) || !input.dataset.field) {
     return null;
   }
 
+  let selector = `[data-field="${escapeSelectorAttributeValue(input.dataset.field)}"]`;
+
+  if (input.dataset.value) {
+    selector += `[data-value="${escapeSelectorAttributeValue(input.dataset.value)}"]`;
+  }
+
   if (input.dataset.processId) {
-    return {
-      selector: `[data-field="${input.dataset.field}"][data-process-id="${input.dataset.processId}"]`,
-      start: input.selectionStart,
-      end: input.selectionEnd,
-    };
+    selector += `[data-process-id="${escapeSelectorAttributeValue(input.dataset.processId)}"]`;
   }
 
   if (input.dataset.field === "goal-config-group-name" && input.dataset.groupId) {
-    return {
-      selector: `[data-field="goal-config-group-name"][data-group-id="${input.dataset.groupId}"]`,
-      start: input.selectionStart,
-      end: input.selectionEnd,
-    };
+    selector = `[data-field="goal-config-group-name"][data-group-id="${input.dataset.groupId}"]`;
   }
 
   if (input.dataset.krId) {
-    return {
-      selector: `[data-field="${input.dataset.field}"][data-kr-id="${input.dataset.krId}"]`,
-      start: input.selectionStart,
-      end: input.selectionEnd,
-    };
+    selector = `[data-field="${escapeSelectorAttributeValue(input.dataset.field)}"][data-kr-id="${escapeSelectorAttributeValue(input.dataset.krId)}"]`;
   }
 
-  return {
-    selector: `[data-field="${input.dataset.field}"]`,
-    start: input.selectionStart,
-    end: input.selectionEnd,
+  const preserve = {
+    selector,
   };
+
+  if (input instanceof HTMLInputElement || input instanceof HTMLTextAreaElement) {
+    preserve.start = input.selectionStart;
+    preserve.end = input.selectionEnd;
+  }
+
+  return preserve;
+}
+
+function getInteractivePreserveFocus(target) {
+  const inputPreserve = getInputPreserveFocus(target);
+  if (inputPreserve) {
+    return inputPreserve;
+  }
+
+  if (!(target instanceof HTMLElement) || !target.dataset.action) {
+    return null;
+  }
+
+  let selector = `[data-action="${escapeSelectorAttributeValue(target.dataset.action)}"]`;
+
+  if (target.dataset.value) {
+    selector += `[data-value="${escapeSelectorAttributeValue(target.dataset.value)}"]`;
+  }
+
+  if (target.dataset.processId) {
+    selector += `[data-process-id="${escapeSelectorAttributeValue(target.dataset.processId)}"]`;
+  }
+
+  if (target.dataset.groupId) {
+    selector += `[data-group-id="${escapeSelectorAttributeValue(target.dataset.groupId)}"]`;
+  }
+
+  if (target.dataset.krId) {
+    selector += `[data-kr-id="${escapeSelectorAttributeValue(target.dataset.krId)}"]`;
+  }
+
+  return { selector };
 }
 
 function shouldDeferInputRender(event) {
@@ -7634,6 +10997,7 @@ function render(preserveFocus) {
     return;
   }
 
+  syncTabIndicators();
   syncAdaptiveTableActionColumns();
 
   if (preserveFocus && preserveFocus.selector) {
@@ -7651,6 +11015,7 @@ preloadGoalConfigProcessGuideImages();
 
 function animateSidebarCollapse(target) {
   const sidebar = document.querySelector(".sidebar");
+  const topbar = document.querySelector(".topbar");
   const nextCollapsed = !state.sidebarCollapsed;
 
   state.sidebarCollapsed = nextCollapsed;
@@ -7663,6 +11028,7 @@ function animateSidebarCollapse(target) {
   }
 
   sidebar.classList.toggle("is-collapsed", nextCollapsed);
+  topbar?.classList.toggle("is-sidebar-collapsed", nextCollapsed);
   syncSidebarGroupPopoversInDom();
 
   const collapseButton = sidebar.querySelector(".collapse-button");
@@ -7712,6 +11078,9 @@ function onAction(action, value, target) {
     }
     case "navigate-page":
       state.activePage = normalizeGoalPage(value);
+      state.pendingManualGuidePage = ["goal-config", "goal-management"].includes(state.activePage)
+        ? state.activePage
+        : null;
       resetGoalPageEntryTab(state.activePage);
       refreshCurrentPageTableState(state.activePage);
       if (getSidebarGroupKeyByPage(state.activePage)) {
@@ -7725,19 +11094,860 @@ function onAction(action, value, target) {
         advanceConfigPrepGuide(2);
       }
       break;
-    case "switch-user": {
-      const nextUserKey = normalizeCurrentUserKey(value);
+    case "switch-payroll-group": {
+      const nextPayrollGroupId = getDefaultPayrollGroupId(getPayrollGroupSettingsRows(), String(value || ""));
       closeTransientPanels();
       state.overlay = null;
-      if (nextUserKey === state.currentUserKey) {
+      if (!nextPayrollGroupId || nextPayrollGroupId === state.currentPayrollGroupId) {
+        if (syncPayrollGroupSwitchControl()) {
+          persistState();
+          return;
+        }
         break;
       }
-      state.currentUserKey = nextUserKey;
-      syncActivePageAccess();
-      refreshCurrentPageTableState(state.activePage);
-      showToast(`已切换到 ${getCurrentUserProfile().label}`);
+      state.currentPayrollGroupId = nextPayrollGroupId;
+      showToast(`已切换到 ${getCurrentPayrollGroupSwitchOption().label}`);
+      if (syncPayrollGroupSwitchControl()) {
+        persistState();
+        return;
+      }
       break;
     }
+    case "create-payroll-group":
+      closeTransientPanels();
+      state.overlay = buildPayrollGroupCreateOverlay();
+      syncPayrollGroupSwitchControl();
+      if (syncOverlayInPlace()) {
+        persistState();
+        return;
+      }
+      break;
+    case "confirm-payroll-group-create":
+      if (state.overlay && state.overlay.type === "payroll-group-create") {
+        const groupName = String(state.overlay.groupName || "").trim();
+        if (!groupName) {
+          showToast("请输入薪酬组名称");
+          return;
+        }
+        if (isPayrollGroupSettingsNameTaken(groupName)) {
+          showToast("薪酬组名称已存在");
+          return;
+        }
+        const currentApprover = getCurrentApprover();
+        const nextRows = [
+          {
+            id: createRuntimeId("payroll-group"),
+            name: groupName,
+            creatorId: currentApprover.id,
+            creator: currentApprover.label,
+            createdAt: new Date().toISOString(),
+          },
+          ...getPayrollGroupSettingsRows(),
+        ];
+        state.payrollGroupSettings = {
+          ...state.payrollGroupSettings,
+          rows: nextRows,
+          page: 1,
+        };
+        state.currentPayrollGroupId = getDefaultPayrollGroupId(nextRows, state.currentPayrollGroupId);
+        ensurePayrollGroupCreatorFilterVisible(currentApprover.label);
+        closeTransientPanels();
+        state.overlay = null;
+        showToast(`已创建「${groupName}」`);
+        syncPayrollGroupPage();
+        syncOverlayInPlace();
+        persistState();
+        return;
+      }
+      break;
+    case "configure-payroll-group": {
+      const row = getPayrollGroupSettingsRow(value);
+      if (!row) {
+        showToast("薪酬组不存在");
+        return;
+      }
+      closeTransientPanels();
+      state.overlay = null;
+      setPayrollGroupDetailState({
+        ...DEFAULT_PAYROLL_GROUP_DETAIL_STATE,
+        rowId: row.id,
+        fieldRows: getPayrollGroupDetailFieldRows(),
+        ruleSettings: getPayrollGroupRuleSettingsForRow(row.id),
+      });
+      break;
+    }
+    case "open-payroll-group-settings-list":
+      closeTransientPanels();
+      state.overlay = null;
+      setPayrollGroupDetailState({
+        ...DEFAULT_PAYROLL_GROUP_DETAIL_STATE,
+        rowId: null,
+        fieldRows: getPayrollGroupDetailFieldRows(),
+        ruleSettings: getPayrollGroupRuleSettings(),
+      });
+      break;
+    case "set-payroll-group-detail-tab": {
+      const nextTab = PAYROLL_GROUP_DETAIL_TAB_OPTIONS.some((item) => item.key === value)
+        ? value
+        : DEFAULT_PAYROLL_GROUP_DETAIL_STATE.activeTab;
+      const detail = getPayrollGroupDetailState();
+      queueTabIndicatorTransition("payroll-group-detail", detail.activeTab, nextTab);
+      closeTransientPanels();
+      state.overlay = null;
+      setPayrollGroupDetailState({
+        ...detail,
+        activeTab: nextTab,
+      });
+      if (syncPayrollGroupPage()) {
+        persistState();
+        return;
+      }
+      break;
+    }
+    case "set-payroll-group-rule-view-mode": {
+      const detail = getPayrollGroupDetailState();
+      const nextRuleSettings = setPayrollGroupRuleDraftForRow(detail.rowId, {
+        ...detail.ruleSettings,
+        viewMode: value === "monthly" ? "monthly" : "fixed",
+      });
+      setPayrollGroupDetailState({
+        ...detail,
+        ruleSettings: nextRuleSettings,
+      });
+      if (syncPayrollGroupPage()) {
+        persistState();
+        return;
+      }
+      break;
+    }
+    case "save-payroll-group-rule-settings": {
+      const detail = getPayrollGroupDetailState();
+      const ruleSettings = getPayrollGroupRuleSettings();
+      if (ruleSettings.viewMode === "fixed" && !ruleSettings.fixedDays.trim()) {
+        showToast("请输入固定天数");
+        const input = document.querySelector('[data-field="payroll-group-rule-fixed-days"]');
+        if (input instanceof HTMLInputElement) {
+          input.focus();
+        }
+        return;
+      }
+      if (ruleSettings.viewMode === "monthly") {
+        const emptyMonthIndex = ruleSettings.monthlyDays.findIndex((value) => !String(value || "").trim());
+        if (emptyMonthIndex >= 0) {
+          showToast(`请输入${PAYROLL_GROUP_RULE_MONTH_OPTIONS[emptyMonthIndex].label}`);
+          const input = document.querySelector(
+            `[data-field="payroll-group-rule-month-day"][data-month-index="${emptyMonthIndex}"]`
+          );
+          if (input instanceof HTMLInputElement) {
+            input.focus();
+          }
+          return;
+        }
+      }
+      const savedRuleSettings = setPayrollGroupRuleSavedForRow(detail.rowId, ruleSettings);
+      setPayrollGroupDetailState({
+        ...detail,
+        ruleSettings: savedRuleSettings,
+      });
+      showToast("规则设置已保存");
+      persistState();
+      return;
+    }
+    case "toggle-payroll-group-detail-sidebar": {
+      const detail = getPayrollGroupDetailState();
+      setPayrollGroupDetailState({
+        ...detail,
+        sidebarCollapsed: !detail.sidebarCollapsed,
+      });
+      if (syncPayrollGroupPage()) {
+        persistState();
+        return;
+      }
+      break;
+    }
+    case "set-payroll-group-detail-section": {
+      if (!PAYROLL_GROUP_DETAIL_SECTION_OPTIONS.some((item) => item.key === value)) {
+        break;
+      }
+      const detail = getPayrollGroupDetailState();
+      closeTransientPanels();
+      setPayrollGroupDetailState({
+        ...detail,
+        sectionKey: value,
+        page: 1,
+      });
+      if (syncPayrollGroupPage()) {
+        persistState();
+        return;
+      }
+      break;
+    }
+    case "create-payroll-group-detail-field": {
+      const sectionKey = PAYROLL_GROUP_DETAIL_SECTION_OPTIONS.some((item) => item.key === value)
+        ? value
+        : getPayrollGroupDetailState().sectionKey;
+      closeTransientPanels();
+      state.overlay = buildPayrollGroupFieldCreateOverlay(sectionKey);
+      if (syncOverlayInPlace()) {
+        persistState();
+        return;
+      }
+      break;
+    }
+    case "set-payroll-group-field-create-mode": {
+      if (!state.overlay || state.overlay.type !== "payroll-group-field-create") {
+        return;
+      }
+      state.overlay = normalizePayrollGroupDetailFieldCreateOverlay({
+        ...state.overlay,
+        mode: value === "auto" ? "auto" : "manual",
+      });
+      if (syncOverlayInPlace()) {
+        persistState();
+        return;
+      }
+      break;
+    }
+    case "set-payroll-group-field-create-type": {
+      if (!state.overlay || state.overlay.type !== "payroll-group-field-create") {
+        return;
+      }
+      state.overlay = normalizePayrollGroupDetailFieldCreateOverlay({
+        ...state.overlay,
+        itemType: value,
+      });
+      if (syncOverlayInPlace()) {
+        persistState();
+        return;
+      }
+      break;
+    }
+    case "open-payroll-group-field-formula-editor": {
+      if (!state.overlay || state.overlay.type !== "payroll-group-field-create") {
+        return;
+      }
+      const nextOverlay = normalizePayrollGroupDetailFieldCreateOverlay({
+        ...state.overlay,
+        formulaEditor: createPayrollGroupDetailFormulaEditorState(state.overlay, {
+          open: true,
+        }),
+      });
+      state.overlay = nextOverlay;
+      if (syncOverlayInPlace()) {
+        focusPayrollGroupFormulaEditorInput(nextOverlay.formulaEditor.selectionStart, nextOverlay.formulaEditor.selectionEnd);
+        return;
+      }
+      break;
+    }
+    case "close-payroll-group-formula-editor": {
+      if (!state.overlay || state.overlay.type !== "payroll-group-field-create") {
+        return;
+      }
+      state.overlay = normalizePayrollGroupDetailFieldCreateOverlay({
+        ...state.overlay,
+        formulaEditor: createPayrollGroupDetailFormulaEditorState(state.overlay, {
+          open: false,
+        }),
+      });
+      if (syncOverlayInPlace()) {
+        return;
+      }
+      break;
+    }
+    case "save-payroll-group-formula-editor": {
+      if (!state.overlay || state.overlay.type !== "payroll-group-field-create") {
+        return;
+      }
+      const formulaEditor = normalizePayrollGroupDetailFormulaEditorState(state.overlay.formulaEditor, state.overlay);
+      state.overlay = normalizePayrollGroupDetailFieldCreateOverlay({
+        ...state.overlay,
+        formulaConfig: formulaEditor.draftFormula,
+        formulaDescription: formulaEditor.draftDescription,
+        formulaEditor: createPayrollGroupDetailFormulaEditorState(
+          {
+            ...state.overlay,
+            formulaConfig: formulaEditor.draftFormula,
+            formulaDescription: formulaEditor.draftDescription,
+          },
+          { open: false }
+        ),
+      });
+      if (syncOverlayInPlace()) {
+        return;
+      }
+      break;
+    }
+    case "insert-payroll-group-field-formula-reference": {
+      if (!state.overlay || state.overlay.type !== "payroll-group-field-create") {
+        return;
+      }
+      const formulaEditor = normalizePayrollGroupDetailFormulaEditorState(state.overlay.formulaEditor, state.overlay);
+      const insertResult = insertPayrollGroupFormulaText(
+        formulaEditor.draftFormula,
+        `{${String(value || "")}}`,
+        formulaEditor.selectionStart,
+        formulaEditor.selectionEnd
+      );
+      state.overlay = normalizePayrollGroupDetailFieldCreateOverlay({
+        ...state.overlay,
+        formulaEditor: {
+          ...formulaEditor,
+          open: true,
+          draftFormula: insertResult.value,
+          selectionStart: insertResult.selectionStart,
+          selectionEnd: insertResult.selectionEnd,
+        },
+      });
+      if (syncOverlayInPlace()) {
+        focusPayrollGroupFormulaEditorInput(insertResult.selectionStart, insertResult.selectionEnd);
+        return;
+      }
+      break;
+    }
+    case "insert-payroll-group-field-formula-function": {
+      if (!state.overlay || state.overlay.type !== "payroll-group-field-create") {
+        return;
+      }
+      const functionOption = getPayrollGroupDetailFormulaFunctionOption(value);
+      if (!functionOption) {
+        return;
+      }
+      const formulaEditor = normalizePayrollGroupDetailFormulaEditorState(state.overlay.formulaEditor, state.overlay);
+      const insertResult = insertPayrollGroupFormulaText(
+        formulaEditor.draftFormula,
+        functionOption.insertText,
+        formulaEditor.selectionStart,
+        formulaEditor.selectionEnd,
+        functionOption.caretOffset
+      );
+      state.overlay = normalizePayrollGroupDetailFieldCreateOverlay({
+        ...state.overlay,
+        formulaEditor: {
+          ...formulaEditor,
+          open: true,
+          draftFormula: insertResult.value,
+          selectionStart: insertResult.selectionStart,
+          selectionEnd: insertResult.selectionEnd,
+        },
+      });
+      if (syncOverlayInPlace()) {
+        focusPayrollGroupFormulaEditorInput(insertResult.selectionStart, insertResult.selectionEnd);
+        return;
+      }
+      break;
+    }
+    case "confirm-payroll-group-field-create": {
+      if (!state.overlay || state.overlay.type !== "payroll-group-field-create") {
+        return;
+      }
+      const overlay = normalizePayrollGroupDetailFieldCreateOverlay(state.overlay);
+      const isEditMode = overlay.submitMode === "edit";
+      const name = normalizePayrollGroupDetailFieldName(overlay.name);
+      if (!name) {
+        showToast("请输入项名称");
+        const input = document.querySelector('[data-field="payroll-group-field-create-name"]');
+        if (input instanceof HTMLInputElement) {
+          input.focus();
+        }
+        return;
+      }
+      const isCustomExternalSource =
+        overlay.mode === "auto" &&
+        overlay.itemType === "other-application" &&
+        isPayrollGroupDetailCustomExternalSource(overlay.sourceApp);
+      const customExternalMappingEntries = isCustomExternalSource
+        ? getPayrollGroupDetailCustomExternalMappingEntries(overlay)
+        : [];
+      const primaryCustomExternalMapping = customExternalMappingEntries[0] || null;
+      if (isCustomExternalSource && !isPayrollGroupDetailCustomExternalUrlValid(overlay.customExternalUrl)) {
+        showToast("请输入有效的请求地址");
+        const input = document.querySelector('[data-field="payroll-group-field-create-custom-url"]');
+        if (input instanceof HTMLInputElement) {
+          input.focus();
+        }
+        return;
+      }
+      if (
+        isCustomExternalSource &&
+        isPayrollGroupDetailCustomExternalAuthValueRequired(overlay.customExternalAuthType) &&
+        !overlay.customExternalAuthValue.trim()
+      ) {
+        showToast("请输入鉴权值");
+        const input = document.querySelector('[data-field="payroll-group-field-create-custom-auth-value"]');
+        if (input instanceof HTMLInputElement) {
+          input.focus();
+        }
+        return;
+      }
+      if (isCustomExternalSource && !customExternalMappingEntries.length) {
+        showToast("请先获取并选择字段");
+        return;
+      }
+      const customExternalConfig = isCustomExternalSource
+        ? {
+            source_type: "custom_external",
+            url: overlay.customExternalUrl.trim(),
+            auth_type: overlay.customExternalAuthType,
+            auth_value: overlay.customExternalAuthValue,
+            field_path: primaryCustomExternalMapping.field.path,
+            field_type: primaryCustomExternalMapping.field.fieldType || "string",
+            mapping_field: primaryCustomExternalMapping.mapping.key,
+            field_mappings: customExternalMappingEntries.map((entry) => ({
+              field_path: entry.field.path,
+              field_type: entry.field.fieldType || "string",
+              mapping_field: entry.mapping.key,
+            })),
+          }
+        : null;
+
+      let nextFieldRows = getPayrollGroupDetailFieldRows();
+      if (isEditMode) {
+        const field = getPayrollGroupDetailField(overlay.editingFieldId);
+        if (!field) {
+          showToast("项不存在");
+          return;
+        }
+        const nextRow = {
+          ...field,
+          sectionKey: overlay.sectionKey,
+          name,
+          entryMode: overlay.mode,
+          itemType: overlay.sectionKey === "info" ? overlay.itemType : null,
+          formulaConfig: overlay.formulaConfig,
+          formulaDescription: overlay.formulaDescription,
+          sourceApp: overlay.sourceApp,
+          sourceForm: overlay.sourceForm,
+          sourceField: overlay.sourceField,
+          matchField: overlay.matchField,
+          sourceType: isCustomExternalSource ? "custom_external" : overlay.itemType === "other-application" ? "system_fixed" : "",
+          customExternalConfig,
+          customExternalUrl: isCustomExternalSource ? overlay.customExternalUrl : "",
+          customExternalAuthType: isCustomExternalSource ? overlay.customExternalAuthType : "none",
+          customExternalAuthValue: isCustomExternalSource ? overlay.customExternalAuthValue : "",
+          customExternalFields: isCustomExternalSource ? overlay.customExternalFields : [],
+          customExternalFieldPath: isCustomExternalSource ? primaryCustomExternalMapping.field.path : "",
+          customExternalFieldType: isCustomExternalSource ? primaryCustomExternalMapping.field.fieldType : "",
+          customExternalMappingField: isCustomExternalSource ? primaryCustomExternalMapping.mapping.key : "",
+          customExternalMappings: isCustomExternalSource ? overlay.customExternalMappings : {},
+          defaultText: overlay.defaultText,
+          defaultNumber: overlay.defaultNumber,
+        };
+        nextFieldRows = nextFieldRows.map((item) => (item.id === field.id ? nextRow : item));
+      } else {
+        const currentApprover = getCurrentApprover();
+        const nextRow = {
+          id: createRuntimeId("payroll-field"),
+          sectionKey: overlay.sectionKey,
+          name,
+          status: "enabled",
+          creatorId: currentApprover.id,
+          creator: currentApprover.label,
+          entryMode: overlay.mode,
+          itemType: overlay.sectionKey === "info" ? overlay.itemType : null,
+          formulaConfig: overlay.formulaConfig,
+          formulaDescription: overlay.formulaDescription,
+          sourceApp: overlay.sourceApp,
+          sourceForm: overlay.sourceForm,
+          sourceField: overlay.sourceField,
+          matchField: overlay.matchField,
+          sourceType: isCustomExternalSource ? "custom_external" : overlay.itemType === "other-application" ? "system_fixed" : "",
+          customExternalConfig,
+          customExternalUrl: isCustomExternalSource ? overlay.customExternalUrl : "",
+          customExternalAuthType: isCustomExternalSource ? overlay.customExternalAuthType : "none",
+          customExternalAuthValue: isCustomExternalSource ? overlay.customExternalAuthValue : "",
+          customExternalFields: isCustomExternalSource ? overlay.customExternalFields : [],
+          customExternalFieldPath: isCustomExternalSource ? primaryCustomExternalMapping.field.path : "",
+          customExternalFieldType: isCustomExternalSource ? primaryCustomExternalMapping.field.fieldType : "",
+          customExternalMappingField: isCustomExternalSource ? primaryCustomExternalMapping.mapping.key : "",
+          customExternalMappings: isCustomExternalSource ? overlay.customExternalMappings : {},
+          defaultText: overlay.defaultText,
+          defaultNumber: overlay.defaultNumber,
+        };
+        nextFieldRows = [nextRow, ...nextFieldRows];
+      }
+      setPayrollGroupDetailState({
+        ...getPayrollGroupDetailState(),
+        fieldRows: nextFieldRows,
+        page: 1,
+      });
+      closeTransientPanels();
+      state.overlay = null;
+      showToast(`${isEditMode ? "已编辑" : "已创建"}「${name}」`);
+      syncPayrollGroupPage();
+      syncOverlayInPlace();
+      persistState();
+      return;
+    }
+    case "edit-payroll-group-detail-field": {
+      const field = getPayrollGroupDetailField(value);
+      setRowMenuOpenState(null);
+      if (!field) {
+        showToast("项不存在");
+        return;
+      }
+      closeTransientPanels();
+      state.overlay = buildPayrollGroupFieldEditOverlay(field);
+      if (syncOverlayInPlace()) {
+        persistState();
+        return;
+      }
+      return;
+    }
+    case "toggle-payroll-group-detail-field-status": {
+      const field = getPayrollGroupDetailField(value);
+      setRowMenuOpenState(null);
+      if (!field) {
+        showToast("项不存在");
+        return;
+      }
+      if (field.isSystemDefault) {
+        showToast("系统默认项不可停用");
+        return;
+      }
+      const nextStatus = field.status === "enabled" ? "disabled" : "enabled";
+      const nextFieldRows = getPayrollGroupDetailFieldRows().map((item) =>
+        item.id === field.id ? { ...item, status: nextStatus } : item
+      );
+      setPayrollGroupDetailState({
+        ...getPayrollGroupDetailState(),
+        fieldRows: nextFieldRows,
+      });
+      showToast(`「${field.name}」${nextStatus === "disabled" ? "已停用" : "已启用"}`);
+      if (syncPayrollGroupPage()) {
+        persistState();
+        return;
+      }
+      break;
+    }
+    case "delete-payroll-group-detail-field": {
+      const field = getPayrollGroupDetailField(value);
+      setRowMenuOpenState(null);
+      if (!field) {
+        showToast("项不存在");
+        return;
+      }
+      if (field.isSystemDefault) {
+        showToast("系统默认项不可删除");
+        return;
+      }
+      const nextFieldRows = getPayrollGroupDetailFieldRows().filter((item) => item.id !== field.id);
+      setPayrollGroupDetailState({
+        ...getPayrollGroupDetailState(),
+        fieldRows: nextFieldRows,
+      });
+      showToast(`「${field.name}」已删除`);
+      if (syncPayrollGroupPage()) {
+        persistState();
+        return;
+      }
+      break;
+    }
+    case "toggle-row-menu": {
+      const nextMenuId = String(value || "");
+      setDropdownOpenState(null);
+      setRowMenuOpenState(state.openRowMenu === nextMenuId ? null : nextMenuId);
+      if (isPayrollGroupPageMenuId(nextMenuId) && syncPayrollGroupPage()) {
+        persistState();
+        return;
+      }
+      break;
+    }
+    case "copy-payroll-group": {
+      const row = getPayrollGroupSettingsRow(value);
+      if (!row) {
+        return;
+      }
+      setDropdownOpenState(null);
+      setRowMenuOpenState(null);
+      state.overlay = buildPayrollGroupCopyOverlay(row);
+      syncPayrollGroupSwitchControl();
+      if (syncOverlayInPlace()) {
+        persistState();
+        return;
+      }
+      break;
+    }
+    case "delete-payroll-group": {
+      const row = getPayrollGroupSettingsRow(value);
+      if (!row) {
+        return;
+      }
+      setDropdownOpenState(null);
+      setRowMenuOpenState(null);
+      state.overlay = buildPayrollGroupDeleteOverlay(row);
+      syncPayrollGroupSwitchControl();
+      if (syncOverlayInPlace()) {
+        persistState();
+        return;
+      }
+      break;
+    }
+    case "payroll-group-page-prev":
+      setPayrollGroupSettingsPage(Math.max(1, state.payrollGroupSettings.page - 1));
+      if (syncPayrollGroupPage()) {
+        persistState();
+        return;
+      }
+      break;
+    case "payroll-group-page-next": {
+      const totalPages = getPayrollGroupSettingsPagedRows(getFilteredPayrollGroupSettingsRows()).totalPages;
+      setPayrollGroupSettingsPage(Math.min(totalPages, state.payrollGroupSettings.page + 1));
+      if (syncPayrollGroupPage()) {
+        persistState();
+        return;
+      }
+      break;
+    }
+    case "set-payroll-group-page-size":
+      state.pageSize = Number(value);
+      resetPayrollGroupSettingsPaging();
+      setDropdownOpenState(null);
+      if (syncPayrollGroupPage()) {
+        persistState();
+        return;
+      }
+      break;
+    case "set-payroll-group-creator-filter":
+      state.payrollGroupSettings.creator = isValidPayrollGroupCreator(value, getPayrollGroupSettingsRows())
+        ? value
+        : "all";
+      resetPayrollGroupSettingsPaging();
+      setDropdownOpenState(null);
+      if (syncPayrollGroupPage()) {
+        persistState();
+        return;
+      }
+      break;
+    case "payroll-group-detail-page-prev": {
+      const detail = getPayrollGroupDetailState();
+      setPayrollGroupDetailState({
+        ...detail,
+        page: Math.max(1, detail.page - 1),
+      });
+      if (syncPayrollGroupPage()) {
+        persistState();
+        return;
+      }
+      break;
+    }
+    case "payroll-group-detail-page-next": {
+      const detail = getPayrollGroupDetailState();
+      const totalPages = getPayrollGroupDetailPagedFields(getFilteredPayrollGroupDetailFields()).totalPages;
+      setPayrollGroupDetailState({
+        ...detail,
+        page: Math.min(totalPages, detail.page + 1),
+      });
+      if (syncPayrollGroupPage()) {
+        persistState();
+        return;
+      }
+      break;
+    }
+    case "set-payroll-group-detail-page-size":
+      state.pageSize = Number(value);
+      resetPayrollGroupDetailPaging();
+      setDropdownOpenState(null);
+      if (syncPayrollGroupPage()) {
+        persistState();
+        return;
+      }
+      break;
+    case "set-payroll-group-detail-status-filter": {
+      const detail = getPayrollGroupDetailState();
+      setPayrollGroupDetailState({
+        ...detail,
+        status: PAYROLL_GROUP_DETAIL_STATUS_OPTIONS.some((item) => item.key === value) ? value : "all",
+        page: 1,
+      });
+      setDropdownOpenState(null);
+      if (syncPayrollGroupPage()) {
+        persistState();
+        return;
+      }
+      break;
+    }
+    case "set-payroll-group-detail-creator-filter": {
+      const detail = getPayrollGroupDetailState();
+      const creatorOptions = getPayrollGroupDetailCreatorOptions();
+      setPayrollGroupDetailState({
+        ...detail,
+        creator: creatorOptions.some((item) => item.key === value) ? value : "all",
+        page: 1,
+      });
+      setDropdownOpenState(null);
+      if (syncPayrollGroupPage()) {
+        persistState();
+        return;
+      }
+      break;
+    }
+    case "set-payroll-group-field-create-source-app":
+      if (state.overlay?.type === "payroll-group-field-create") {
+        state.overlay = normalizePayrollGroupDetailFieldCreateOverlay({
+          ...state.overlay,
+          sourceApp: value || "",
+          sourceForm: "",
+          sourceField: "",
+          matchField: "",
+          customExternalFetchStatus: "idle",
+          customExternalFetchError: "",
+          customExternalRequestId: "",
+          customExternalFields: [],
+          customExternalFieldPath: "",
+          customExternalFieldType: "",
+          customExternalMappingField: "",
+          customExternalMappings: {},
+        });
+        setDropdownOpenState(null);
+        if (syncOverlayInPlace()) {
+          persistState();
+          return;
+        }
+      }
+      break;
+    case "set-payroll-group-field-create-custom-auth-type":
+      if (state.overlay?.type === "payroll-group-field-create") {
+        state.overlay = normalizePayrollGroupDetailFieldCreateOverlay({
+          ...state.overlay,
+          customExternalAuthType: value || "none",
+          customExternalFetchStatus: "idle",
+          customExternalFetchError: "",
+          customExternalRequestId: "",
+          customExternalFields: [],
+          customExternalFieldPath: "",
+          customExternalFieldType: "",
+          customExternalMappingField: "",
+          customExternalMappings: {},
+        });
+        setDropdownOpenState(null);
+        if (syncOverlayInPlace()) {
+          persistState();
+          return;
+        }
+      }
+      break;
+    case "toggle-payroll-group-field-create-custom-auth-visible":
+      if (state.overlay?.type === "payroll-group-field-create") {
+        state.overlay = normalizePayrollGroupDetailFieldCreateOverlay({
+          ...state.overlay,
+          customExternalAuthValueVisible: !state.overlay.customExternalAuthValueVisible,
+        });
+        if (syncOverlayInPlace()) {
+          persistState();
+          return;
+        }
+      }
+      break;
+    case "fetch-payroll-group-field-create-custom-fields": {
+      if (state.overlay?.type !== "payroll-group-field-create") {
+        return;
+      }
+      const overlay = normalizePayrollGroupDetailFieldCreateOverlay(state.overlay);
+      if (!isPayrollGroupDetailCustomExternalUrlValid(overlay.customExternalUrl)) {
+        showToast("请输入有效的请求地址");
+        return;
+      }
+      if (
+        isPayrollGroupDetailCustomExternalAuthValueRequired(overlay.customExternalAuthType) &&
+        !overlay.customExternalAuthValue.trim()
+      ) {
+        showToast("请输入鉴权值");
+        return;
+      }
+      state.overlay = normalizePayrollGroupDetailFieldCreateOverlay({
+        ...overlay,
+        customExternalFetchStatus: "success",
+        customExternalFetchError: "",
+        customExternalRequestId: "",
+        customExternalFields: getPayrollGroupDetailCustomExternalMockFields(),
+        customExternalFieldPath: "",
+        customExternalFieldType: "",
+        customExternalMappingField: "",
+        customExternalMappings: {},
+      });
+      if (syncOverlayInPlace()) {
+        persistState();
+        return;
+      } else {
+        render();
+      }
+      return;
+    }
+    case "set-payroll-group-field-create-custom-field":
+      if (state.overlay?.type === "payroll-group-field-create") {
+        const [fieldPath, mappingKey] = String(value || "").split("|||");
+        const fields = normalizePayrollGroupDetailCustomExternalFields(state.overlay.customExternalFields);
+        const selectedField = getPayrollGroupDetailCustomExternalFieldByPath(fields, fieldPath);
+        const selectedMapping = getPayrollGroupDetailCustomExternalMappingOption(mappingKey);
+        const allowedMappings = getPayrollGroupDetailCustomExternalMappingOptionsForField(selectedField);
+        if (
+          !selectedField ||
+          !selectedMapping ||
+          !canSelectPayrollGroupDetailCustomExternalField(state.overlay.sectionKey, selectedField) ||
+          !allowedMappings.some((option) => option.key === selectedMapping.key)
+        ) {
+          return;
+        }
+        const customExternalMappings = {
+          ...(state.overlay.customExternalMappings || {}),
+          [selectedField.path]: selectedMapping.key,
+        };
+        state.overlay = normalizePayrollGroupDetailFieldCreateOverlay({
+          ...state.overlay,
+          customExternalFieldPath: selectedField.path,
+          customExternalFieldType: selectedField.fieldType,
+          customExternalMappingField: selectedMapping.key,
+          customExternalMappings,
+        });
+        setDropdownOpenState(null);
+        if (syncOverlayInPlace()) {
+          persistState();
+          return;
+        }
+      }
+      break;
+    case "set-payroll-group-field-create-source-form":
+      if (state.overlay?.type === "payroll-group-field-create") {
+        state.overlay = {
+          ...state.overlay,
+          sourceForm: value || "",
+          sourceField: "",
+          matchField: "",
+        };
+        setDropdownOpenState(null);
+        if (syncOverlayInPlace()) {
+          persistState();
+          return;
+        }
+      }
+      break;
+    case "set-payroll-group-field-create-source-field":
+      if (state.overlay?.type === "payroll-group-field-create") {
+        state.overlay = {
+          ...state.overlay,
+          sourceField: value || "",
+          matchField: "",
+        };
+        setDropdownOpenState(null);
+        if (syncOverlayInPlace()) {
+          persistState();
+          return;
+        }
+      }
+      break;
+    case "set-payroll-group-field-create-match-field":
+      if (state.overlay?.type === "payroll-group-field-create") {
+        state.overlay = {
+          ...state.overlay,
+          matchField: value || "",
+        };
+        setDropdownOpenState(null);
+        if (syncOverlayInPlace()) {
+          persistState();
+          return;
+        }
+      }
+      break;
     case "dismiss-guide":
       dismissGoalManagementGuide();
       break;
@@ -7746,17 +11956,26 @@ function onAction(action, value, target) {
       closeTransientPanels();
       break;
     case "toggle-dropdown": {
-      const shouldCompleteGuideUsagePrompt = isGuideMenuGuideStep(1) && value === "help-menu";
       toggleDropdownOpenState(value);
       setRowMenuOpenState(null);
-      if (shouldCompleteGuideUsagePrompt) {
-        closeConfigPrepGuide(true);
-      }
       if (
         state.overlay?.type === "start-goal" &&
         (value === "start-goal-period" || value === "start-goal-group")
       ) {
         syncStartGoalModal();
+        return;
+      }
+      if (
+        state.overlay?.type === "payroll-group-field-create" &&
+        String(value || "").startsWith("payroll-group-field-create-")
+      ) {
+        if (syncOverlayInPlace()) {
+          persistState();
+          return;
+        }
+      }
+      if (isPayrollGroupDropdownKey(value) && syncPayrollGroupPage()) {
+        persistState();
         return;
       }
     }
@@ -7766,12 +11985,14 @@ function onAction(action, value, target) {
       setRowMenuOpenState(null);
       break;
     case "set-my-goal-tab":
+      queueTabIndicatorTransition("my-goals", state.myGoals.activeTab, value);
       state.myGoals.activeTab = value;
       refreshCurrentPageTableState("my-goals");
       closeTransientPanels();
       state.overlay = null;
       break;
     case "set-goal-config-tab":
+      queueTabIndicatorTransition("goal-config", state.goalConfig.activeTab, value === "process" ? "process" : "library");
       state.goalConfig.activeTab = value === "process" ? "process" : "library";
       refreshCurrentPageTableState("goal-config");
       closeTransientPanels();
@@ -8491,12 +12712,29 @@ function onAction(action, value, target) {
       setDropdownOpenState(null);
       break;
     case "set-tab":
-      state.activeTab = value;
+      queueTabIndicatorTransition("goal-management", state.activeTab, value === "completed" ? "completed" : "ongoing");
+      state.activeTab = value === "completed" ? "completed" : "ongoing";
       refreshCurrentPageTableState("goal-management");
       closeTransientPanels();
       state.overlay = null;
       break;
-    case "close-overlay":
+    case "close-overlay": {
+      if (state.overlay?.type === "payroll-group-field-create" && state.overlay.formulaEditor?.open) {
+        state.overlay = normalizePayrollGroupDetailFieldCreateOverlay({
+          ...state.overlay,
+          formulaEditor: createPayrollGroupDetailFormulaEditorState(state.overlay, {
+            open: false,
+          }),
+        });
+        if (syncOverlayInPlace()) {
+          return;
+        }
+        break;
+      }
+      const wasPayrollGroupOverlay =
+        state.overlay?.type === "payroll-group-create" ||
+        state.overlay?.type === "payroll-group-field-create" ||
+        (state.overlay?.type === "confirm" && state.overlay.scope === "payroll-group");
       if (isConfigPrepGuideStep(4) && state.overlay?.type === "goal-config-process-create") {
         setConfigPrepGuideStep(3);
       }
@@ -8505,7 +12743,14 @@ function onAction(action, value, target) {
       }
       closeTransientPanels();
       state.overlay = null;
+      if (wasPayrollGroupOverlay) {
+        syncPayrollGroupPage();
+        syncOverlayInPlace();
+        persistState();
+        return;
+      }
       break;
+    }
     case "collapse-nav":
       animateSidebarCollapse(target);
       return;
@@ -8540,9 +12785,18 @@ document.addEventListener("click", (event) => {
   }
 
   if (!event.target.closest(".dropdown-panel") && !event.target.closest(".control") && state.openDropdown) {
+    const previousDropdown = state.openDropdown;
     setDropdownOpenState(null);
     if (state.overlay?.type === "goal-config-transfer") {
       syncGoalConfigTransferModal();
+      return;
+    }
+    if (state.overlay?.type === "payroll-group-field-create" && syncOverlayInPlace()) {
+      persistState();
+      return;
+    }
+    if (isPayrollGroupDropdownKey(previousDropdown) && syncPayrollGroupPage()) {
+      persistState();
       return;
     }
     render();
@@ -8550,7 +12804,12 @@ document.addEventListener("click", (event) => {
   }
 
   if (!event.target.closest(".row-menu") && !event.target.closest(".row-menu-trigger") && state.openRowMenu) {
+    const previousRowMenu = state.openRowMenu;
     setRowMenuOpenState(null);
+    if (isPayrollGroupPageMenuId(previousRowMenu) && syncPayrollGroupPage()) {
+      persistState();
+      return;
+    }
     render();
     return;
   }
@@ -8616,6 +12875,167 @@ document.addEventListener("input", (event) => {
       render(preserveFocus);
     }
   }
+  if (event.target.dataset.field === "payroll-group-keyword") {
+    state.payrollGroupSettings.keyword = event.target.value;
+    resetPayrollGroupSettingsPaging();
+    if (!deferRender) {
+      if (syncPayrollGroupPage()) {
+        persistState();
+        return;
+      }
+      render(preserveFocus);
+    }
+  }
+  if (event.target.dataset.field === "payroll-group-detail-item-keyword") {
+    const detail = getPayrollGroupDetailState();
+    setPayrollGroupDetailState({
+      ...detail,
+      itemKeyword: event.target.value,
+    });
+    if (!deferRender) {
+      if (syncPayrollGroupPage()) {
+        persistState();
+        return;
+      }
+      render(preserveFocus);
+    }
+  }
+  if (event.target.dataset.field === "payroll-group-detail-field-keyword") {
+    const detail = getPayrollGroupDetailState();
+    setPayrollGroupDetailState({
+      ...detail,
+      fieldKeyword: event.target.value,
+      page: 1,
+    });
+    if (!deferRender) {
+      if (syncPayrollGroupPage()) {
+        persistState();
+        return;
+      }
+      render(preserveFocus);
+    }
+  }
+  if (event.target.dataset.field === "payroll-group-rule-fixed-days") {
+    const detail = getPayrollGroupDetailState();
+    const nextRuleSettings = setPayrollGroupRuleDraftForRow(detail.rowId, {
+      ...detail.ruleSettings,
+      fixedDays: event.target.value,
+    });
+    setPayrollGroupDetailState({
+      ...detail,
+      ruleSettings: nextRuleSettings,
+    });
+    persistState();
+    return;
+  }
+  if (event.target.dataset.field === "payroll-group-rule-daily-attendance-hours") {
+    const detail = getPayrollGroupDetailState();
+    const nextRuleSettings = setPayrollGroupRuleDraftForRow(detail.rowId, {
+      ...detail.ruleSettings,
+      dailyAttendanceHours: event.target.value,
+    });
+    setPayrollGroupDetailState({
+      ...detail,
+      ruleSettings: nextRuleSettings,
+    });
+    persistState();
+    return;
+  }
+  if (event.target.dataset.field === "payroll-group-rule-month-day") {
+    const monthIndex = Number(event.target.dataset.monthIndex);
+    if (!Number.isInteger(monthIndex) || monthIndex < 0 || monthIndex >= PAYROLL_GROUP_RULE_MONTH_OPTIONS.length) {
+      return;
+    }
+    const detail = getPayrollGroupDetailState();
+    const nextMonthlyDays = [...getPayrollGroupRuleSettings().monthlyDays];
+    nextMonthlyDays[monthIndex] = event.target.value;
+    const nextRuleSettings = setPayrollGroupRuleDraftForRow(detail.rowId, {
+      ...detail.ruleSettings,
+      monthlyDays: nextMonthlyDays,
+    });
+    setPayrollGroupDetailState({
+      ...detail,
+      ruleSettings: nextRuleSettings,
+    });
+    persistState();
+    return;
+  }
+  if (event.target.dataset.field === "payroll-group-create-name" && state.overlay?.type === "payroll-group-create") {
+    state.overlay = {
+      ...state.overlay,
+      groupName: event.target.value,
+    };
+    return;
+  }
+  if (event.target.dataset.field === "payroll-group-field-create-name" && state.overlay?.type === "payroll-group-field-create") {
+    state.overlay = {
+      ...state.overlay,
+      name: event.target.value,
+    };
+    return;
+  }
+  if (
+    event.target.dataset.field === "payroll-group-field-create-default-text" &&
+    state.overlay?.type === "payroll-group-field-create"
+  ) {
+    state.overlay = {
+      ...state.overlay,
+      defaultText: event.target.value,
+    };
+    return;
+  }
+  if (
+    event.target.dataset.field === "payroll-group-field-create-default-number" &&
+    state.overlay?.type === "payroll-group-field-create"
+  ) {
+    state.overlay = {
+      ...state.overlay,
+      defaultNumber: event.target.value,
+    };
+    return;
+  }
+  if (
+    event.target.dataset.field === "payroll-group-field-create-custom-url" &&
+    state.overlay?.type === "payroll-group-field-create"
+  ) {
+    state.overlay = normalizePayrollGroupDetailFieldCreateOverlay({
+      ...state.overlay,
+      customExternalUrl: event.target.value,
+      customExternalFetchStatus: "idle",
+      customExternalFetchError: "",
+      customExternalRequestId: "",
+      customExternalFields: [],
+      customExternalFieldPath: "",
+      customExternalFieldType: "",
+      customExternalMappingField: "",
+      customExternalMappings: {},
+    });
+    if (!deferRender) {
+      syncOverlayInPlace();
+    }
+    return;
+  }
+  if (
+    event.target.dataset.field === "payroll-group-field-create-custom-auth-value" &&
+    state.overlay?.type === "payroll-group-field-create"
+  ) {
+    state.overlay = normalizePayrollGroupDetailFieldCreateOverlay({
+      ...state.overlay,
+      customExternalAuthValue: event.target.value,
+      customExternalFetchStatus: "idle",
+      customExternalFetchError: "",
+      customExternalRequestId: "",
+      customExternalFields: [],
+      customExternalFieldPath: "",
+      customExternalFieldType: "",
+      customExternalMappingField: "",
+      customExternalMappings: {},
+    });
+    if (!deferRender) {
+      syncOverlayInPlace();
+    }
+    return;
+  }
   if (event.target.dataset.field === "goal-config-process-name" && event.target.dataset.processId) {
     state.goalConfig.processEditingName = event.target.value;
     if (!deferRender) {
@@ -8677,6 +13097,153 @@ document.addEventListener("input", (event) => {
   }
 });
 
+document.addEventListener("input", (event) => {
+  if (!state.overlay || state.overlay.type !== "payroll-group-field-create") {
+    return;
+  }
+
+  if (event.target instanceof HTMLTextAreaElement && event.target.dataset.field === "payroll-group-field-formula-editor-input") {
+    const formulaEditor = normalizePayrollGroupDetailFormulaEditorState(state.overlay.formulaEditor, state.overlay);
+    state.overlay = normalizePayrollGroupDetailFieldCreateOverlay({
+      ...state.overlay,
+      formulaEditor: {
+        ...formulaEditor,
+        open: true,
+        draftFormula: event.target.value,
+        selectionStart: event.target.selectionStart,
+        selectionEnd: event.target.selectionEnd,
+        scrollTop: event.target.scrollTop,
+        scrollLeft: event.target.scrollLeft,
+      },
+    });
+    syncPayrollGroupFormulaEditorPresentation(event.target);
+    return;
+  }
+
+  if (!(event.target instanceof HTMLInputElement)) {
+    return;
+  }
+
+  const preserveFocus = getInputPreserveFocus(event.target);
+  const deferRender = shouldDeferInputRender(event);
+  if (event.target.dataset.field === "payroll-group-field-formula-editor-description") {
+    const formulaEditor = normalizePayrollGroupDetailFormulaEditorState(state.overlay.formulaEditor, state.overlay);
+    state.overlay = normalizePayrollGroupDetailFieldCreateOverlay({
+      ...state.overlay,
+      formulaEditor: {
+        ...formulaEditor,
+        open: true,
+        draftDescription: event.target.value,
+      },
+    });
+    return;
+  }
+
+  if (event.target.dataset.field === "payroll-group-field-formula-editor-field-search") {
+    const formulaEditor = normalizePayrollGroupDetailFormulaEditorState(state.overlay.formulaEditor, state.overlay);
+    state.overlay = normalizePayrollGroupDetailFieldCreateOverlay({
+      ...state.overlay,
+      formulaEditor: {
+        ...formulaEditor,
+        open: true,
+        fieldKeyword: event.target.value,
+      },
+    });
+    if (deferRender) {
+      return;
+    }
+    syncOverlayInPlace();
+    if (!preserveFocus?.selector) {
+      return;
+    }
+    const nextInput = document.querySelector(preserveFocus.selector);
+    if (nextInput instanceof HTMLInputElement) {
+      nextInput.focus();
+      if (typeof preserveFocus?.start === "number" && typeof preserveFocus?.end === "number") {
+        nextInput.setSelectionRange(preserveFocus.start, preserveFocus.end);
+      }
+    }
+    return;
+  }
+
+  if (event.target.dataset.field === "payroll-group-field-formula-editor-function-search") {
+    const formulaEditor = normalizePayrollGroupDetailFormulaEditorState(state.overlay.formulaEditor, state.overlay);
+    state.overlay = normalizePayrollGroupDetailFieldCreateOverlay({
+      ...state.overlay,
+      formulaEditor: {
+        ...formulaEditor,
+        open: true,
+        functionKeyword: event.target.value,
+      },
+    });
+    if (deferRender) {
+      return;
+    }
+    syncOverlayInPlace();
+    if (!preserveFocus?.selector) {
+      return;
+    }
+    const nextInput = document.querySelector(preserveFocus.selector);
+    if (nextInput instanceof HTMLInputElement) {
+      nextInput.focus();
+      if (typeof preserveFocus?.start === "number" && typeof preserveFocus?.end === "number") {
+        nextInput.setSelectionRange(preserveFocus.start, preserveFocus.end);
+      }
+    }
+  }
+});
+
+document.addEventListener("selectionchange", () => {
+  if (!state.overlay || state.overlay.type !== "payroll-group-field-create") {
+    return;
+  }
+
+  const activeElement = document.activeElement;
+  if (
+    !(activeElement instanceof HTMLTextAreaElement) ||
+    activeElement.dataset.field !== "payroll-group-field-formula-editor-input"
+  ) {
+    return;
+  }
+
+  const formulaEditor = normalizePayrollGroupDetailFormulaEditorState(state.overlay.formulaEditor, state.overlay);
+  state.overlay = normalizePayrollGroupDetailFieldCreateOverlay({
+    ...state.overlay,
+    formulaEditor: {
+      ...formulaEditor,
+      open: true,
+      selectionStart: activeElement.selectionStart,
+      selectionEnd: activeElement.selectionEnd,
+    },
+  });
+});
+
+document.addEventListener(
+  "scroll",
+  (event) => {
+    if (!state.overlay || state.overlay.type !== "payroll-group-field-create") {
+      return;
+    }
+
+    if (!(event.target instanceof HTMLTextAreaElement) || event.target.dataset.field !== "payroll-group-field-formula-editor-input") {
+      return;
+    }
+
+    const formulaEditor = normalizePayrollGroupDetailFormulaEditorState(state.overlay.formulaEditor, state.overlay);
+    state.overlay = normalizePayrollGroupDetailFieldCreateOverlay({
+      ...state.overlay,
+      formulaEditor: {
+        ...formulaEditor,
+        open: true,
+        scrollTop: event.target.scrollTop,
+        scrollLeft: event.target.scrollLeft,
+      },
+    });
+    syncPayrollGroupFormulaEditorPresentation(event.target);
+  },
+  true
+);
+
 document.addEventListener("focusout", (event) => {
   if (!isConfigPrepGuideStep(9) || !isConfigPrepGuideDraftFocusField(event.target)) {
     return;
@@ -8721,7 +13288,7 @@ document.addEventListener("keydown", (event) => {
       render();
     }
   }
-    if (event.target.dataset.field === "goal-config-create-process-name" && state.overlay?.type === "goal-config-process-create") {
+  if (event.target.dataset.field === "goal-config-create-process-name" && state.overlay?.type === "goal-config-process-create") {
     if (event.key === "Enter" && !event.isComposing) {
       event.preventDefault();
       onAction("confirm-goal-config-process-create", "");
@@ -8731,6 +13298,30 @@ document.addEventListener("keydown", (event) => {
       if (isConfigPrepGuideStep(4)) {
         setConfigPrepGuideStep(3);
       }
+      closeTransientPanels();
+      state.overlay = null;
+      render();
+    }
+  }
+  if (event.target.dataset.field === "payroll-group-create-name" && state.overlay?.type === "payroll-group-create") {
+    if (event.key === "Enter" && !event.isComposing) {
+      event.preventDefault();
+      onAction("confirm-payroll-group-create", "");
+    }
+    if (event.key === "Escape") {
+      event.preventDefault();
+      closeTransientPanels();
+      state.overlay = null;
+      render();
+    }
+  }
+  if (event.target.dataset.field === "payroll-group-field-create-name" && state.overlay?.type === "payroll-group-field-create") {
+    if (event.key === "Enter" && !event.isComposing) {
+      event.preventDefault();
+      onAction("confirm-payroll-group-field-create", "");
+    }
+    if (event.key === "Escape") {
+      event.preventDefault();
       closeTransientPanels();
       state.overlay = null;
       render();
@@ -8747,7 +13338,38 @@ document.addEventListener("compositionstart", (event) => {
 document.addEventListener("compositionend", (event) => {
   if (event.target instanceof HTMLInputElement) {
     delete event.target.dataset.composing;
+    if (event.target.dataset.field === "payroll-group-create-name" && state.overlay?.type === "payroll-group-create") {
+      return;
+    }
+    if (
+      [
+        "payroll-group-field-create-name",
+        "payroll-group-field-create-default-text",
+        "payroll-group-field-create-default-number",
+        "payroll-group-field-create-custom-url",
+        "payroll-group-field-create-custom-auth-value",
+      ].includes(event.target.dataset.field) &&
+      state.overlay?.type === "payroll-group-field-create"
+    ) {
+      return;
+    }
+    if (
+      event.target.dataset.field === "goal-config-create-process-name" &&
+      state.overlay?.type === "goal-config-process-create"
+    ) {
+      return;
+    }
     const preserveFocus = getInputPreserveFocus(event.target);
+    if (
+      ["payroll-group-keyword", "payroll-group-detail-item-keyword", "payroll-group-detail-field-keyword"].includes(
+        event.target.dataset.field
+      ) &&
+      state.activePage === "company-info" &&
+      syncPayrollGroupPage()
+    ) {
+      persistState();
+      return;
+    }
     if (preserveFocus) {
       render(preserveFocus);
     }
@@ -8795,6 +13417,17 @@ function commitGoalConfigInlineEditingOnClick(event) {
 document.addEventListener("keydown", (event) => {
   if (event.key === "Escape") {
     if (state.overlay) {
+      if (state.overlay.type === "payroll-group-field-create" && state.overlay.formulaEditor?.open) {
+        state.overlay = normalizePayrollGroupDetailFieldCreateOverlay({
+          ...state.overlay,
+          formulaEditor: createPayrollGroupDetailFormulaEditorState(state.overlay, {
+            open: false,
+          }),
+        });
+        if (syncOverlayInPlace()) {
+          return;
+        }
+      }
       if (isConfigPrepGuideStep(4) && state.overlay.type === "goal-config-process-create") {
         setConfigPrepGuideStep(3);
       }
@@ -8806,15 +13439,29 @@ document.addEventListener("keydown", (event) => {
       render();
       return;
     }
-    if (
-      state.openDropdown ||
-      state.openRowMenu ||
-      state.goalConfig.cardMenuId ||
-      state.goalConfig.groupMenuId ||
+  if (
+    state.openDropdown ||
+    state.openRowMenu ||
+    state.goalConfig.cardMenuId ||
+    state.goalConfig.groupMenuId ||
       state.goalConfig.editingGroupId ||
       state.goalConfig.processEditingId
     ) {
+      const previousDropdown = state.openDropdown;
+      const previousRowMenu = state.openRowMenu;
       closeTransientPanels();
+      if (state.overlay?.type === "payroll-group-field-create" && syncOverlayInPlace()) {
+        persistState();
+        return;
+      }
+      if (isPayrollGroupDropdownKey(previousDropdown) && syncPayrollGroupPage()) {
+        persistState();
+        return;
+      }
+      if (isPayrollGroupPageMenuId(previousRowMenu) && syncPayrollGroupPage()) {
+        persistState();
+        return;
+      }
       render();
     }
   }
